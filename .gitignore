@@ -1,0 +1,20 @@
+# .NET derleme çıktıları
+bin/
+obj/
+publish/
+*.user
+.vs/
+
+# Yerel ikili dosyalar (GitHub Releases'e yükleyin)
+YEK-Panel.exe
+release/*.exe
+
+# Kullanıcı verileri
+settings.json
+history.json
+notifications.json
+rapor-*.csv
+
+# Geçici dosyalar
+*.log
+*.tmp

@@ -1,0 +1,128 @@
+﻿YEK PANEL v2.0 · 100 ÖZELLİK
+============================================================
+
+Toplam 100 özellik: 38'i v2.0'da yeni, 62'si önceki sürümlerden geliyor.
+[YENİ v2.0] = bu sürümde eklendi   [MEVCUT] = önceki sürümlerde vardı
+
+GÖRÜNÜM & PENCERE
+1) Koyu lacivert özel tema ve yuvarlatılmış pencere — [MEVCUT]
+2) Özel başlık çubuğu; sürükle, küçült, kapat — [MEVCUT]
+3) Her zaman üstte (pin) modu — [MEVCUT]
+4) Mini mod ile kompakt görünüm — [MEVCUT]
+5) Mini modun son halini hatırlama — [YENİ v2.0]
+6) Pencere konumunu hatırlama — [MEVCUT]
+7) Pencereyi ekran sınırları içinde tutma — [MEVCUT]
+8) Kapatınca tepsiye küçültme — [MEVCUT]
+9) Tepside gizli başlatma — [YENİ v2.0]
+10) %60–%100 arası pencere saydamlığı, canlı önizleme — [YENİ v2.0]
+11) Dört vurgu rengi: mavi, turkuaz, yeşil, amber — [MEVCUT]
+12) Tema değişimini anında uygulama ve kalıcı saklama — [MEVCUT]
+
+SAAT & TARİH
+13) Dijital saat — [MEVCUT]
+14) Tarih, ay ve gün adı — [MEVCUT]
+15) 12/24 saat biçimi seçimi — [YENİ v2.0]
+16) Saniyeleri göster/gizle — [YENİ v2.0]
+
+SİSTEM SAĞLIĞI
+17) CPU kullanımı ve canlı sparkline grafiği — [MEVCUT]
+18) RAM kullanımı (GB + %) ve sparkline — [MEVCUT]
+19) Disk doluluk yüzdesi ve çubuğu — [MEVCUT]
+20) Sistem çalışma süresi (uptime) — [MEVCUT]
+21) Canlı indirme hızı — [MEVCUT]
+22) Canlı yükleme hızı — [MEVCUT]
+23) İnternet ping göstergesi — [MEVCUT]
+24) Yerel IP adresi — [MEVCUT]
+25) CPU/GPU sıcaklık okuma (yönetici ile) — [MEVCUT]
+26) Celsius/Fahrenheit birim seçimi — [YENİ v2.0]
+27) Bilgisayar adı — [MEVCUT]
+28) En yoğun 5 işlem ve bellek kullanımı — [MEVCUT]
+
+HAVA DURUMU & İNTERNET
+29) Anlık hava durumu — [MEVCUT]
+30) 3 günlük hava tahmini — [MEVCUT]
+31) Duruma göre hava simgeleri — [MEVCUT]
+32) Hissedilen, nem, rüzgar ve min/maks detay kartı — [MEVCUT]
+33) Şehir seçimi; boşsa IP ile otomatik konum — [MEVCUT]
+34) Çoklu yedek sunuculu indirme hız testi — [MEVCUT]
+
+SUNUCU İZLEME
+35) Dört sunucu ucunu birlikte izleme — [MEVCUT]
+36) HTTP durum kodu kontrolü — [MEVCUT]
+37) Yanıt süresi (ms) — [MEVCUT]
+38) Renkli çevrimiçi/uyarı/hata durum noktası — [MEVCUT]
+39) Son 20 kontrolün geçmiş çubukları — [MEVCUT]
+40) Gecikme mini grafiği — [MEVCUT]
+41) SSL sertifikasında kalan gün sayısı — [MEVCUT]
+42) En yakın SSL bitişinin özeti — [MEVCUT]
+43) SSL 14 gün kala tek seferlik uyarı — [YENİ v2.0]
+44) TCP port açık/kapalı kontrolü — [MEVCUT]
+45) 24 saatlik çevrimiçi oranı — [MEVCUT]
+46) Sunucu satırında ayrıntılı ipucu (tooltip) — [MEVCUT]
+47) Sunucu başına bakım modu (bildirimi susturur) — [YENİ v2.0]
+48) Yavaş yanıt eşiği ve YAVAŞ durumu — [YENİ v2.0]
+49) 30 günlük geçmiş saklama — [YENİ v2.0]
+50) Wake-on-LAN ile sunucu açma — [MEVCUT]
+
+BİLDİRİM & RAPOR
+51) Sunucu düşünce tepsi bildirimi — [MEVCUT]
+52) Sunucu düzelince bildirim — [MEVCUT]
+53) Son 200 bildirimin kaydı — [MEVCUT]
+54) Sessiz saatler — [MEVCUT]
+55) Bildirimleri açma/kapatma — [MEVCUT]
+56) Günlük özet bildirimi ve saati — [YENİ v2.0]
+57) Son 24 saatteki sorun sayısı — [YENİ v2.0]
+58) 7 günlük çevrimiçi grafiği — [MEVCUT]
+59) 30 günlük çevrimiçi grafiği — [YENİ v2.0]
+60) Kesinti (incident) listesi ve süreleri — [YENİ v2.0]
+61) CSV rapor dışa aktarma — [MEVCUT]
+62) Rapor için 7/30 gün seçimi — [YENİ v2.0]
+63) UTF-8 BOM ve noktalı virgül uyumlu CSV — [MEVCUT]
+64) Bildirim testi — [YENİ v2.0]
+
+ARAÇ MERKEZİ
+65) Araç merkezi (Ctrl+K) — [YENİ v2.0]
+66) Pil yüzdesi, şarj durumu ve kalan süre — [YENİ v2.0]
+67) Bağlantı türü ve bağlantı hızı — [YENİ v2.0]
+68) Ağ geçidi adresi — [YENİ v2.0]
+69) DNS sunucuları — [YENİ v2.0]
+70) Wi-Fi SSID ve sinyal gücü — [YENİ v2.0]
+71) Genel IP görüntüleme ve kopyalama — [YENİ v2.0]
+72) Tüm disklerin kullanım çubukları — [YENİ v2.0]
+73) Ping testi (4 paket, min/ort/maks) — [YENİ v2.0]
+74) TCP port testi — [YENİ v2.0]
+75) Görev Yöneticisini tek tıkla açma — [YENİ v2.0]
+76) Not Defterini tek tıkla açma — [YENİ v2.0]
+77) Hesap Makinesini tek tıkla açma — [YENİ v2.0]
+78) Komut İstemini tek tıkla açma — [YENİ v2.0]
+79) Tanılama bilgilerini panoya kopyalama — [YENİ v2.0]
+80) Kronometre (başlat/dur/devam/sıfırla) — [YENİ v2.0]
+81) Geri sayım ve süre bitince bildirim — [YENİ v2.0]
+82) Kalıcı hızlı not — [YENİ v2.0]
+83) Ayarları JSON olarak yedekleme — [YENİ v2.0]
+84) Ayarları yedekten geri yükleme — [YENİ v2.0]
+85) Geçmiş ve bildirim verilerini temizleme — [YENİ v2.0]
+86) 100 özellik listesini açma — [YENİ v2.0]
+
+AYARLAR & BAŞLANGIÇ
+87) Sunucu URL'lerini düzenleme — [MEVCUT]
+88) Sunucu MAC adreslerini düzenleme — [MEVCUT]
+89) 5–3600 saniye yenileme aralığı — [MEVCUT]
+90) Windows açılınca başlatma — [MEVCUT]
+91) Ayarların JSON dosyasında saklanması — [MEVCUT]
+92) Bozuk ayar dosyasında varsayılana dönme — [MEVCUT]
+93) Ayar değerlerini doğrulama ve sınırlama — [MEVCUT]
+94) Yönetici olarak yeniden başlatma — [MEVCUT]
+
+KISAYOLLAR & TEPSİ
+95) F5 ile yenileme — [MEVCUT]
+96) Ctrl+, ile ayarlar — [MEVCUT]
+97) Ctrl+M ile mini mod — [MEVCUT]
+98) Ctrl+T ile her zaman üstte — [MEVCUT]
+99) Ctrl+H ile geçmiş ve rapor — [MEVCUT]
+100) Tepsi menüsü: göster, yenile, araç merkezi, mini mod, hız testi, sessiz saatler, çıkış — [MEVCUT]
+
+------------------------------------------------------------
+Not: 7/30 günlük rapor, kesintiler, araç merkezi, güvenlik/SSL uyarısı
+ve bakım modu v2.0'ın ana yenilikleridir. Veriler %AppData%\YekPanel
+klasöründe JSON/CSV olarak tutulur.

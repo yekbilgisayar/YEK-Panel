@@ -1,0 +1,122 @@
+﻿YEK PANEL v2.0
+==============
+
+Ne yapar?
+- Bilgisayarın işlemci, bellek, disk ve çalışma süresi bilgilerini canlı gösterir.
+- İşlemci ve bellek için son 60 saniyenin grafiğini çizer.
+- Anlık ağ hızını (indirme/yükleme) ve en çok bellek kullanan işlemleri gösterir.
+- Dört sunucu ucunu (web sitesi, panel, Home Assistant, Nextcloud) belirli aralıkla
+  kontrol eder; yeşil = çevrimiçi, kırmızı = ulaşılamıyor, sarı = yanıt veriyor.
+- Her sunucunun altında son 20 kontrolün durum çubuklarını ve gecikme grafiğini gösterir.
+- 24 saatlik çevrimiçi oranını, SSL kalan gün sayısını ve TCP port durumunu gösterir.
+- Sağ üstte hava durumu: sıcaklık, durum, şehir ve yarının en düşük/en yüksek derecesi.
+  Üzerine tıklayınca detay kartı açılır: hissedilen, nem, rüzgar, bugün/yarın/öbür gün.
+- İnternet gecikmesini (ping, ms) izler; sağ altta yeşil/kırmızı nokta.
+- Sistem tepsisinde çalışır; kapatınca tepsiye küçültülebilir.
+- Sunucu sorunlarında tepsi bildirimi gösterir; sessiz saatler ve günlük özet desteklenir.
+
+v2.0 yenilikleri (38 yeni özellik)
+- ARAÇ MERKEZİ (Ctrl+K veya alt sağdaki araç simgesi):
+  * Pil yüzdesi, şarj durumu ve kalan süre.
+  * Bağlantı türü, bağlantı hızı, yerel IP, ağ geçidi, DNS ve Wi-Fi SSID/sinyal.
+  * Genel IP görüntüleme ve tek tuşla kopyalama.
+  * Tüm disklerin kullanım çubukları.
+  * Ping testi (4 paket; min/ort/maks) ve TCP port testi.
+  * Görev Yöneticisi, Not Defteri, Hesap Makinesi ve Komut İstemi hızlı başlatma.
+  * Tanılama bilgilerini panoya kopyalama.
+  * Kronometre (başlat/dur/devam/sıfırla) ve geri sayım (süre bitince bildirim).
+  * Kalıcı hızlı not.
+  * Ayarları JSON olarak yedekleme, yedekten geri yükleme.
+  * Geçmiş/bildirim verilerini temizleme ve bildirim testi.
+  * 100 özellik listesini açma.
+- Geçmiş & rapor:
+  * 7 gün ve 30 gün arasında geçiş.
+  * Kesinti (incident) listesi: başlangıç zamanı ve süre.
+  * 30 günlük geçmiş saklama (önce 10 gündü).
+  * CSV raporu seçilen 7/30 gün aralığına göre ve kesinti bölümüyle oluşturulur.
+- Sunucu izleme:
+  * Sunucu başına BAKIM MODU: bildirim üretmez, raporda bakım olarak görünür.
+  * Yavaş yanıt eşiği (varsayılan 1500 ms); eşik aşılırsa YAVAŞ durumu gösterilir.
+  * SSL sertifikası 14 günün altına düşünce tek seferlik uyarı ve kayıt.
+- Görünüm ve başlangıç:
+  * Pencere saydamlığı %60–%100 arasında canlı ayarlanır.
+  * 12/24 saat biçimi ve saniyeleri göster/gizle.
+  * Celsius/Fahrenheit seçimi.
+  * Tepside gizli başlatma.
+  * Mini modun son halini hatırlama.
+- Bildirimler:
+  * Günlük özet bildirimi ve saati (son 24 saatteki sorun sayısı dahil).
+- Tepsi menüsüne Araç merkezi, Mini mod, Hız testi ve Sessiz saatler eklendi.
+- Durum çubuğunda v2.0 etiketi.
+
+Önceki sürümlerden gelenler
+- v1.4: SSL sayacı, TCP port kontrolü, 7 günlük rapor, bildirim geçmişi, sessiz saatler,
+  hız testi, Wake-on-LAN, CSV dışa aktarma, CPU/GPU sıcaklığı, tema renkleri, MAC alanları.
+- v1.3: Mini mod, kapatınca tepsiye küçült, konum hatırlama, gecikme grafiği,
+  24 saatlik çevrimiçi oranı, hava durumu detay kartı, hatırlanan pencere konumu.
+
+Kurulum (önerilen)
+- "YEK-Panel-Setup-2.0.0.exe" dosyasını çalıştırın.
+- Kurulum yalnızca sizin kullanıcınız için yapılır; yönetici izni gerekmez.
+- Varsayılan konum: %LocalAppData%\Programs\YekPanel
+- Masaüstü ve Başlat menüsü kısayolları oluşturulur.
+- Kaldırmak için: Başlat > YEK Panel > Kaldır YEK Panel veya
+  Windows Ayarlar > Uygulamalar > YEK Panel > Kaldır.
+- Kaldırırken ayarlarınızı ve geçmişinizi de silmek isteyip istemediğiniz sorulur.
+  Varsayılan seçenek verilerinizi korur.
+
+Taşınabilir sürüm
+- "YEK-Panel-2.0.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
+- Masaüstündeki "YEK Panel" kısayolu da aynı uygulamayı açar.
+
+İlk çalıştırma
+- Sunucu adresleri boş gelir; kendi adreslerinizi Ayarlar ekranından girin.
+- Kurulum paketinde kişisel sunucu adresi, MAC adresi, şehir veya geçmiş bulunmaz.
+- Ayarlar ve geçmiş %AppData%\YekPanel altında tutulur; uygulama klasörüne yazılmaz.
+
+Klavye kısayolları
+- F5 veya Ctrl+R : sunucuları, interneti ve sistem bilgilerini hemen yeniler.
+- Ctrl+K          : Araç merkezini açar/kapatır.
+- Ctrl+H          : geçmiş ve rapor ekranını açar.
+- Ctrl+M          : mini mod ile tam görünüm arasında geçiş yapar.
+- Ctrl+,          : ayarları açar.
+- Ctrl+T          : her zaman üstte özelliğini açar/kapatır.
+- Esc             : açık olan araç merkezi, ayarlar, hava detay veya geçmiş ekranını kapatır.
+
+Kullanım
+- Üst sağdaki ok (pin): pencereyi her zaman üstte tutar.
+- Üst sağdaki küçültme simgesi: pencereyi mini moda alır (Ctrl+M).
+- Alt sağdaki yenile simgesi: sunucuları ve interneti hemen kontrol eder.
+- Alt sağdaki geçmiş simgesi: 7/30 günlük rapor, kesintiler ve bildirim geçmişi (Ctrl+H).
+- Alt sağdaki araç simgesi: Araç merkezi (Ctrl+K).
+- Alt sağdaki dişli simgesi: ayarlar.
+  * Sunucu adresleri ve MAC adresleri düzenlenir (boş bırakılan satır kontrol edilmez).
+  * Her sunucu için ayrı "bakım modu" işaretlenebilir.
+  * Şema yazmazsanız http:// otomatik eklenir; HTTPS cevap vermezse HTTP denenir.
+  * Şehir alanı boş bırakılırsa IP konumuna göre otomatik bulunur.
+  * Yenileme aralığı, tema rengi, sessiz saatler, her zaman üstte, Windows ile başlat,
+    bildirim, kapatınca tepsiye küçült, görünüm, başlangıç ve bakım seçenekleri.
+  * Pencere saydamlığı −/+ düğmeleriyle değiştirilir; KAYDET ile kalıcı olur.
+  * Yavaş yanıt eşiği 100–30000 ms arasında girilebilir.
+  * Günlük özet saatine ulaşınca bir kez özet bildirimi gönderilir.
+- Ayarlar ekranında ESC kapatır. Kapatma düğmesi sağ üsttedir.
+- Hava durumu 10 dakikada, internet ölçümü 20 saniyede, ağ hızı 1 saniyede,
+  süreç listesi 2 saniyede, sıcaklıklar 8 saniyede bir yenilenir.
+
+Bilgiler
+- Ayarlar dosyası: %AppData%\YekPanel\settings.json
+- Sunucu geçmişi: %AppData%\YekPanel\history.json (30 günlük rapor için, 31 gün saklanır)
+- Bildirim geçmişi: %AppData%\YekPanel\notifications.json (son 200 olay)
+- CSV raporları: %AppData%\YekPanel\rapor-*.csv
+- "AYARLARI YEDEKLE" seçilen JSON dosyasına kopyalar; "GERİ YÜKLE" dosyayı
+  settings.json üzerine yazıp uygulamayı yeniden başlatır.
+- "VERİLERİ TEMİZLE" yalnızca geçmiş ve bildirim kayıtlarını siler; ayarlar ve not korunur.
+- Bilgisayar verileri 1 saniyede bir, sunucu durumu seçilen aralıkta yenilenir.
+- İlk kontrol uygulama açılırken yapılır; internet/sunucu erişimi gerekir.
+- Hava durumu Open-Meteo, konum ipwho.is, genel IP ipify/ifconfig.me üzerinden ücretsiz alınır.
+- Hız testi sırasıyla Cloudflare, OVH, ThinkBroadband ve Hetzner sunucularını dener.
+- SSL bilgisi başarılı kontrolde 6 saat, hatalı kontrolde 10 dakika önbellekte tutulur.
+- "Kapatınca tepsiye küçült" kapalıysa Kapat düğmesi uygulamayı tamamen kapatır.
+  Açıkken uygulama tepside çalışmaya devam eder; çıkmak için tepsi menüsünden Çıkış.
+- CPU/GPU sıcaklığı için uygulamayı yönetici olarak çalıştırmak gerekebilir
+  (tepsi menüsü > Yönetici olarak yeniden başlat).
