@@ -18,6 +18,13 @@ Windows 10/11 için açık kaynak sistem ve sunucu izleme paneli. Tek dosya olar
 
 Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 100 özellik.
 
+## Kaynak kod
+
+- GitHub: [yekbilgisayar/YEK-Panel](https://github.com/yekbilgisayar/YEK-Panel)
+- Kaynak ZIP: [YEK-Panel-2.0.0-kaynak.zip](https://github.com/yekbilgisayar/YEK-Panel/releases/download/v2.0.0/YEK-Panel-2.0.0-kaynak.zip)
+
+Kaynak ZIP içinde uygulama kodu, servisler, kurulum betiği, README ve lisans bulunur; derlenmiş exe veya kişisel ayar dosyası bulunmaz.
+
 ## İndirme ve kurulum
 
 En son sürümü **Releases** bölümünden indirin.

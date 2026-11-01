@@ -17,6 +17,7 @@ Windows 10/11 için sistem ve sunucu izleme paneli.
 | --- | --- |
 | `YEK-Panel-Setup-2.0.0.exe` | Kurulum sihirbazı (önerilen) |
 | `YEK-Panel-2.0.0-portable.exe` | Kurulum gerektirmeyen taşınabilir sürüm |
+| `YEK-Panel-2.0.0-kaynak.zip` | Açık kaynak kod, dokümanlar ve kurulum betiği |
 | `SHA256SUMS.txt` | SHA-256 doğrulama değerleri |
 
 ## Kurulum

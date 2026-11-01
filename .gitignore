@@ -8,6 +8,7 @@ publish/
 # Yerel ikili dosyalar (GitHub Releases'e yükleyin)
 YEK-Panel.exe
 release/*.exe
+release/*.zip
 
 # Kullanıcı verileri
 settings.json
