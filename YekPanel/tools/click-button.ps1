@@ -1,12 +1,21 @@
 param(
-    [Parameter(Mandatory = $true)][string]$ProcessName,
+    [string]$ProcessName = "",
+    [int]$ProcessId = 0,
     [Parameter(Mandatory = $true)][string]$ButtonName
 )
 
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 
-$proc = Get-Process -Name $ProcessName -ErrorAction Stop | Select-Object -First 1
+if ($ProcessId -gt 0) {
+    $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+} elseif ($ProcessName.Length -gt 0) {
+    $proc = Get-Process -Name $ProcessName -ErrorAction Stop | Select-Object -First 1
+} else {
+    Write-Output "ProcessName veya ProcessId gerekli"
+    exit 1
+}
+
 $win = [System.Windows.Automation.AutomationElement]::FromHandle($proc.MainWindowHandle)
 $cond = New-Object System.Windows.Automation.PropertyCondition(
     [System.Windows.Automation.AutomationElement]::NameProperty, $ButtonName)

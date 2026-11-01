@@ -2,7 +2,7 @@
 ; Derlemek için: ISCC.exe YekPanel.iss
 
 #define AppName "YEK Panel"
-#define AppVersion "2.0.0"
+#define AppVersion "2.1.0"
 #define AppPublisher "YEK BİLGİSAYAR"
 #define AppExeName "YekPanel.exe"
 #define SourceExe "..\YEK-Panel.exe"
@@ -14,11 +14,11 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppCopyright=YEK BİLGİSAYAR
-VersionInfoVersion=2.0.0.0
+VersionInfoVersion=2.1.0.0
 VersionInfoCompany=YEK BİLGİSAYAR
 VersionInfoDescription=YEK Panel Kurulum
 VersionInfoProductName=YEK Panel
-VersionInfoProductVersion=2.0.0
+VersionInfoProductVersion=2.1.0
 DefaultDirName={localappdata}\Programs\YekPanel
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -75,21 +75,10 @@ turkish.FinishedHeadingLabel=Kurulum tamamlandı
 turkish.FinishedLabel=YEK Panel kullanıma hazır. Ayarlar penceresinden kendi sunucularınızı ekleyebilirsiniz.
 
 [Code]
-function InitializeUninstall(): Boolean;
-var
-  Response: Integer;
+{ Kaldırma sırasında kullanıcı verilerine (%AppData%\YekPanel) asla dokunulmaz.
+  Sunucu adresleri, MAC adresleri, geçmiş ve bildirimler bu klasörde tutulur;
+  silinmesi gerekiyorsa kullanıcı klasörü elle kaldırabilir. }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  Result := True;
-
-  if UninstallSilent then
-    Exit;
-
-  Response := MsgBox(
-    'YEK Panel ayarlarınız, geçmişiniz ve notlarınız da silinsin mi?' + #13#10 +
-    ExpandConstant('{userappdata}\YekPanel') + #13#10#13#10 +
-    'Hayır seçerseniz ayarlarınız korunur.',
-    mbConfirmation, MB_YESNO);
-
-  if Response = IDYES then
-    DelTree(ExpandConstant('{userappdata}\YekPanel'), True, True, True);
+  { Bilinçli olarak boş: veri klasörüne dokunulmaz. }
 end;

@@ -1,8 +1,8 @@
-﻿YEK PANEL v2.0 · 100 ÖZELLİK
+﻿YEK PANEL v2.1 · 106 ÖZELLİK
 ============================================================
 
-Toplam 100 özellik: 38'i v2.0'da yeni, 62'si önceki sürümlerden geliyor.
-[YENİ v2.0] = bu sürümde eklendi   [MEVCUT] = önceki sürümlerde vardı
+Toplam 106 özellik: 6'sı v2.1'de yeni, 100'ü önceki sürümlerden geliyor.
+[YENİ v2.1] = bu sürümde eklendi   [YENİ v2.0] = v2.0'da eklendi   [MEVCUT] = daha önce vardı
 
 GÖRÜNÜM & PENCERE
 1) Koyu lacivert özel tema ve yuvarlatılmış pencere — [MEVCUT]
@@ -122,7 +122,17 @@ KISAYOLLAR & TEPSİ
 99) Ctrl+H ile geçmiş ve rapor — [MEVCUT]
 100) Tepsi menüsü: göster, yenile, araç merkezi, mini mod, hız testi, sessiz saatler, çıkış — [MEVCUT]
 
+v2.1 YENİ ÖZELLİKLER
+101) Ana ekranda pil, bağlantı türü/hızı, yerel IP, ağ geçidi, DNS, Wi-Fi ve genel IP'yi gösteren SİSTEM & BAĞLANTI kartı — [YENİ v2.1]
+102) Yerel IP'yi tek tıkla panoya kopyalama — [YENİ v2.1]
+103) Genel IP'yi ana ekrandan tek tıkla kopyalama — [YENİ v2.1]
+104) Bağlantı kartının 30 saniyede bir arka planda otomatik yenilenmesi — [YENİ v2.1]
+105) Tüm disklerin ana ekranda yüzde çubuklarıyla listelenmesi — [YENİ v2.1]
+106) Yerel veya genel IP değişince tepsi bildirimi — [YENİ v2.1]
+
 ------------------------------------------------------------
-Not: 7/30 günlük rapor, kesintiler, araç merkezi, güvenlik/SSL uyarısı
-ve bakım modu v2.0'ın ana yenilikleridir. Veriler %AppData%\YekPanel
-klasöründe JSON/CSV olarak tutulur.
+Not: Ana ekran bağlantı kartı, IP değişim bildirimi ve tek tıkla
+IP kopyalama v2.1'in ana yenilikleridir. 7/30 günlük rapor,
+kesintiler, araç merkezi, güvenlik/SSL uyarısı ve bakım modu
+v2.0'dan gelir. Veriler %AppData%\YekPanel klasöründe JSON/CSV
+olarak tutulur.

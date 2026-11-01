@@ -9,7 +9,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>YekPanel</AssemblyName>
     <RootNamespace>YekPanel</RootNamespace>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
+    <Product>YEK Panel</Product>
+    <Company>YEK BİLGİSAYAR</Company>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

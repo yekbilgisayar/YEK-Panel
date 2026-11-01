@@ -1,5 +1,6 @@
 param(
-    [Parameter(Mandatory = $true)][string]$ProcessName,
+    [string]$ProcessName = "",
+    [int]$ProcessId = 0,
     [Parameter(Mandatory = $true)][string]$Shot
 )
 
@@ -15,7 +16,14 @@ public static class Win32Shot {
 }
 "@
 
-$proc = Get-Process -Name $ProcessName -ErrorAction Stop | Select-Object -First 1
+if ($ProcessId -gt 0) {
+    $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+} elseif ($ProcessName.Length -gt 0) {
+    $proc = Get-Process -Name $ProcessName -ErrorAction Stop | Select-Object -First 1
+} else {
+    Write-Output "ProcessName veya ProcessId gerekli"; exit 1
+}
+
 $hwnd = $proc.MainWindowHandle
 if ($hwnd -eq [IntPtr]::Zero) { Write-Output "Pencere bulunamadi"; exit 1 }
 

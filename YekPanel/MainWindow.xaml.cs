@@ -82,14 +82,19 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _stopwatchTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly DispatcherTimer _countdownTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _summaryTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer _connectionTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly Stopwatch _stopwatch = new();
     private readonly HashSet<string> _sslAlerted = new();
     private WeatherInfo? _weather;
     private bool _weatherLoading;
     private bool _checking;
-    private bool _toolsLoading;
     private bool _ipLoading;
+    private bool _connectionLoading;
     private DateTime? _countdownEnd;
+    private DateTime _lastConnectionRefresh = DateTime.MinValue;
+    private DateTime _lastPublicIpCheck = DateTime.MinValue;
+    private string _lastLocalIp = "";
+    private string _lastPublicIp = "";
     private double _pendingOpacity = 1.0;
     private int _reportDays = 7;
     private string _publicIp = "—";
@@ -133,6 +138,7 @@ public partial class MainWindow : Window
         _stopwatchTimer.Tick += (_, _) => UpdateStopwatch();
         _countdownTimer.Tick += (_, _) => UpdateCountdown();
         _summaryTimer.Tick += (_, _) => CheckDailySummary();
+        _connectionTimer.Tick += async (_, _) => await RefreshConnectionAsync();
         CpuChart.SizeChanged += (_, _) => RenderSpark(CpuChart, _cpuHistory, _cpuLine, _cpuFill);
         RamChart.SizeChanged += (_, _) => RenderSpark(RamChart, _ramHistory, _ramLine, _ramFill);
 
@@ -142,6 +148,7 @@ public partial class MainWindow : Window
         _processTimer.Start();
         _temperatureTimer.Start();
         _summaryTimer.Start();
+        _connectionTimer.Start();
         Loaded += async (_, _) =>
         {
             UpdateSystem();
@@ -150,6 +157,7 @@ public partial class MainWindow : Window
             _ = RefreshWeatherAsync();
             _ = UpdateTemperaturesAsync();
             _ = RefreshPublicIpAsync();
+            _ = RefreshConnectionAsync(force: true);
 
             if (_settings.RememberMini && _settings.MiniMode)
                 ToggleMini();
@@ -1063,7 +1071,7 @@ public partial class MainWindow : Window
 
         InternetBox.ToolTip = $"Yerel IP: {localIp}\nDış IP: {_publicIp}\nHedef: 1.1.1.1";
 
-        if (_publicIp == "—")
+        if (_publicIp == "—" || DateTime.Now - _lastPublicIpCheck > TimeSpan.FromMinutes(10))
             _ = RefreshPublicIpAsync();
     }
 
@@ -1244,6 +1252,7 @@ public partial class MainWindow : Window
         _stopwatchTimer.Stop();
         _countdownTimer.Stop();
         _summaryTimer.Stop();
+        _connectionTimer.Stop();
         _stopwatch.Stop();
         _sensors.Dispose();
 
@@ -1974,6 +1983,7 @@ public partial class MainWindow : Window
             ToolsPortHost.Text = ToolsHost.Text;
 
         ToolsOverlay.Visibility = Visibility.Visible;
+        SetToolsStatus("bilgiler güncelleniyor…", Muted);
         _ = RefreshToolsAsync();
     }
 
@@ -1983,88 +1993,172 @@ public partial class MainWindow : Window
     private async void RefreshTools_Click(object sender, RoutedEventArgs e) =>
         await RefreshToolsAsync();
 
-    private async Task RefreshToolsAsync()
+    private async void RefreshConnection_Click(object sender, RoutedEventArgs e) =>
+        await RefreshConnectionAsync(force: true);
+
+    private async Task RefreshToolsAsync() => await RefreshConnectionAsync(force: true);
+
+    private async Task RefreshConnectionAsync(bool force = false)
     {
-        if (_toolsLoading)
+        if (_connectionLoading)
             return;
 
-        _toolsLoading = true;
-        SetToolsStatus("bilgiler güncelleniyor…", Muted);
+        if (!force && DateTime.Now - _lastConnectionRefresh < TimeSpan.FromSeconds(5))
+            return;
+
+        _connectionLoading = true;
+        MainConnStatus.Text = "güncelleniyor…";
+        MainConnStatus.Foreground = Muted;
 
         try
         {
-            var connection = ToolsService.GetConnection();
-            var drives = ToolsService.GetDrives();
-            var battery = ToolsService.GetBattery();
+            var (connection, drives, battery) = await Task.Run(() =>
+                (ToolsService.GetConnection(), ToolsService.GetDrives(), ToolsService.GetBattery()));
 
-            ToolBatteryText.Text = battery.Text;
-            ToolBatteryDetail.Text = battery.Detail;
-            ToolAdapterText.Text = string.IsNullOrWhiteSpace(connection.Speed)
-                ? connection.Adapter
-                : $"{connection.Adapter} · {connection.Speed}";
-            ToolIpText.Text = connection.Ipv4;
-            ToolGatewayText.Text = connection.Gateway;
-            ToolDnsText.Text = connection.Dns;
-            ToolWifiText.Text = connection.Wifi;
+            _lastConnectionRefresh = DateTime.Now;
+            ApplyConnection(connection, drives, battery);
+            DetectLocalIpChange(connection.Ipv4);
 
-            DriveList.Children.Clear();
-            if (drives.Count == 0)
-            {
-                DriveList.Children.Add(new TextBlock
-                {
-                    Text = "disk bulunamadı",
-                    FontSize = 10,
-                    Foreground = Muted
-                });
-            }
+            if (DateTime.Now - _lastPublicIpCheck > TimeSpan.FromMinutes(10))
+                _ = RefreshPublicIpAsync();
 
-            foreach (var drive in drives)
-            {
-                var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+            MainConnStatus.Text = $"güncellendi · {DateTime.Now.ToString("HH:mm", Tr)}";
+            MainConnStatus.Foreground = StatusGreen;
 
-                var line = new Grid();
-                line.Children.Add(new TextBlock
-                {
-                    Text = drive.Name,
-                    FontSize = 10.5,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = TextSoft
-                });
-                line.Children.Add(new TextBlock
-                {
-                    Text = $"%{drive.Percent.ToString("0", Tr)} · " +
-                           $"{drive.UsedGb.ToString("0.0", Tr)}/{drive.TotalGb.ToString("0.0", Tr)} GB",
-                    FontSize = 9.5,
-                    Foreground = Muted,
-                    HorizontalAlignment = HorizontalAlignment.Right
-                });
-
-                panel.Children.Add(line);
-                panel.Children.Add(new ProgressBar
-                {
-                    Style = (Style)FindResource("MetricBar"),
-                    Height = 4,
-                    Margin = new Thickness(0, 4, 0, 0),
-                    Maximum = 100,
-                    Value = drive.Percent,
-                    Foreground = drive.Percent >= 90 ? StatusRed
-                        : drive.Percent >= 75 ? StatusAmber
-                        : _barNormal
-                });
-
-                DriveList.Children.Add(panel);
-            }
-
-            await RefreshPublicIpAsync();
-            SetToolsStatus($"güncellendi · {DateTime.Now.ToString("HH:mm:ss", Tr)}", StatusGreen);
+            if (ToolsOverlay.Visibility == Visibility.Visible)
+                SetToolsStatus($"güncellendi · {DateTime.Now.ToString("HH:mm:ss", Tr)}", StatusGreen);
         }
         catch
         {
-            SetToolsStatus("araç bilgileri alınamadı", StatusRed);
+            MainConnStatus.Text = "bilgi alınamadı";
+            MainConnStatus.Foreground = StatusRed;
+            if (ToolsOverlay.Visibility == Visibility.Visible)
+                SetToolsStatus("araç bilgileri alınamadı", StatusRed);
         }
         finally
         {
-            _toolsLoading = false;
+            _connectionLoading = false;
+        }
+    }
+
+    private void ApplyConnection(ConnectionSummary connection, IReadOnlyList<DriveUsage> drives, BatteryInfo battery)
+    {
+        var adapter = string.IsNullOrWhiteSpace(connection.Speed)
+            ? connection.Adapter
+            : $"{connection.Adapter} · {connection.Speed}";
+
+        MainBatteryText.Text = battery.Text;
+        MainBatteryDetail.Text = battery.Detail;
+        MainAdapterText.Text = adapter;
+        MainIpText.Text = connection.Ipv4;
+        MainGatewayText.Text = connection.Gateway;
+        MainDnsText.Text = connection.Dns;
+        MainWifiText.Text = connection.Wifi;
+        MainPublicIpText.Text = _publicIp;
+
+        FillDriveList(MainDriveList, drives, compact: true);
+
+        ToolBatteryText.Text = battery.Text;
+        ToolBatteryDetail.Text = battery.Detail;
+        ToolAdapterText.Text = adapter;
+        ToolIpText.Text = connection.Ipv4;
+        ToolGatewayText.Text = connection.Gateway;
+        ToolDnsText.Text = connection.Dns;
+        ToolWifiText.Text = connection.Wifi;
+        ToolPublicIpText.Text = _publicIp;
+
+        FillDriveList(DriveList, drives, compact: false);
+    }
+
+    private void FillDriveList(Panel target, IReadOnlyList<DriveUsage> drives, bool compact)
+    {
+        target.Children.Clear();
+
+        if (drives.Count == 0)
+        {
+            target.Children.Add(new TextBlock
+            {
+                Text = "disk bulunamadı",
+                FontSize = compact ? 9.5 : 10,
+                Foreground = Muted
+            });
+            return;
+        }
+
+        foreach (var drive in drives)
+        {
+            var panel = new StackPanel { Margin = new Thickness(0, 0, 0, compact ? 6 : 8) };
+
+            var line = new Grid();
+            line.Children.Add(new TextBlock
+            {
+                Text = drive.Name,
+                FontSize = compact ? 10 : 10.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextSoft
+            });
+            line.Children.Add(new TextBlock
+            {
+                Text = $"%{drive.Percent.ToString("0", Tr)} · " +
+                       $"{drive.UsedGb.ToString("0.0", Tr)}/{drive.TotalGb.ToString("0.0", Tr)} GB",
+                FontSize = compact ? 9 : 9.5,
+                Foreground = Muted,
+                HorizontalAlignment = HorizontalAlignment.Right
+            });
+
+            panel.Children.Add(line);
+            panel.Children.Add(new ProgressBar
+            {
+                Style = (Style)FindResource("MetricBar"),
+                Height = compact ? 3.5 : 4,
+                Margin = new Thickness(0, compact ? 3 : 4, 0, 0),
+                Maximum = 100,
+                Value = drive.Percent,
+                Foreground = drive.Percent >= 90 ? StatusRed
+                    : drive.Percent >= 75 ? StatusAmber
+                    : _barNormal
+            });
+
+            target.Children.Add(panel);
+        }
+    }
+
+    private void DetectLocalIpChange(string ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip) || ip == "—")
+            return;
+
+        if (_lastLocalIp.Length > 0 && ip != _lastLocalIp)
+            ShowBalloon("Yerel IP değişti", $"{_lastLocalIp} → {ip}", Forms.ToolTipIcon.Info);
+
+        _lastLocalIp = ip;
+    }
+
+    private void CopyMainIp_Click(object sender, RoutedEventArgs e) =>
+        CopyIpToClipboard(MainIpText.Text, "yerel IP");
+
+    private void CopyMainPublicIp_Click(object sender, RoutedEventArgs e) =>
+        CopyIpToClipboard(MainPublicIpText.Text, "genel IP");
+
+    private void CopyIpToClipboard(string ip, string label)
+    {
+        if (ip is "—" or "")
+        {
+            MainConnStatus.Text = "IP henüz alınmadı";
+            MainConnStatus.Foreground = StatusAmber;
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(ip);
+            MainConnStatus.Text = $"{label} kopyalandı";
+            MainConnStatus.Foreground = StatusGreen;
+        }
+        catch
+        {
+            MainConnStatus.Text = "panoya kopyalanamadı";
+            MainConnStatus.Foreground = StatusRed;
         }
     }
 
@@ -2074,6 +2168,7 @@ public partial class MainWindow : Window
             return;
 
         _ipLoading = true;
+        _lastPublicIpCheck = DateTime.Now;
         try
         {
             var ip = await ToolsService.GetPublicIpAsync(_http, CancellationToken.None);
@@ -2081,9 +2176,14 @@ public partial class MainWindow : Window
                 return;
 
             _publicIp = ip;
+            MainPublicIpText.Text = ip;
             ToolPublicIpText.Text = ip;
             InternetBox.ToolTip =
                 $"Yerel IP: {NetworkMonitor.GetLocalIp()}\nDış IP: {_publicIp}\nHedef: 1.1.1.1";
+
+            if (_lastPublicIp.Length > 0 && ip != _lastPublicIp)
+                ShowBalloon("Genel IP değişti", $"{_lastPublicIp} → {ip}", Forms.ToolTipIcon.Info);
+            _lastPublicIp = ip;
         }
         finally
         {

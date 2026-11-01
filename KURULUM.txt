@@ -1,4 +1,4 @@
-﻿YEK PANEL v2.0
+﻿YEK PANEL v2.1
 ==============
 
 Ne yapar?
@@ -15,7 +15,20 @@ Ne yapar?
 - Sistem tepsisinde çalışır; kapatınca tepsiye küçültülebilir.
 - Sunucu sorunlarında tepsi bildirimi gösterir; sessiz saatler ve günlük özet desteklenir.
 
-v2.0 yenilikleri (38 yeni özellik)
+v2.1 yenilikleri (6 yeni özellik)
+- Ana ekranda SİSTEM & BAĞLANTI kartı:
+  * Pil yüzdesi ve şarj durumu.
+  * Bağlantı türü, adaptör adı ve bağlantı hızı.
+  * Yerel IP, ağ geçidi, DNS ve Wi-Fi SSID/sinyal.
+  * Genel (dış) IP.
+  * Tüm disklerin doluluk çubukları.
+- Yerel ve genel IP'yi ana ekrandan tek tıkla kopyalama.
+- Kart 30 saniyede bir arka planda otomatik yenilenir; uygulama donmaz.
+- Genel IP 10 dakikada bir tazelenir.
+- Yerel veya genel IP değişince tepsi bildirimi (sessiz saatlerde gösterilmez).
+- Araç merkezine "Ağ ayarları" kısayolu eklendi.
+
+v2.0 yenilikleri (38 yeni özellik · v2.1'de korunuyor)
 - ARAÇ MERKEZİ (Ctrl+K veya alt sağdaki araç simgesi):
   * Pil yüzdesi, şarj durumu ve kalan süre.
   * Bağlantı türü, bağlantı hızı, yerel IP, ağ geçidi, DNS ve Wi-Fi SSID/sinyal.
@@ -28,7 +41,7 @@ v2.0 yenilikleri (38 yeni özellik)
   * Kalıcı hızlı not.
   * Ayarları JSON olarak yedekleme, yedekten geri yükleme.
   * Geçmiş/bildirim verilerini temizleme ve bildirim testi.
-  * 100 özellik listesini açma.
+  * 106 özellik listesini açma.
 - Geçmiş & rapor:
   * 7 gün ve 30 gün arasında geçiş.
   * Kesinti (incident) listesi: başlangıç zamanı ve süre.
@@ -47,7 +60,7 @@ v2.0 yenilikleri (38 yeni özellik)
 - Bildirimler:
   * Günlük özet bildirimi ve saati (son 24 saatteki sorun sayısı dahil).
 - Tepsi menüsüne Araç merkezi, Mini mod, Hız testi ve Sessiz saatler eklendi.
-- Durum çubuğunda v2.0 etiketi.
+- Başlık çubuğunda v2.1 etiketi.
 
 Önceki sürümlerden gelenler
 - v1.4: SSL sayacı, TCP port kontrolü, 7 günlük rapor, bildirim geçmişi, sessiz saatler,
@@ -56,17 +69,17 @@ v2.0 yenilikleri (38 yeni özellik)
   24 saatlik çevrimiçi oranı, hava durumu detay kartı, hatırlanan pencere konumu.
 
 Kurulum (önerilen)
-- "YEK-Panel-Setup-2.0.0.exe" dosyasını çalıştırın.
+- "YEK-Panel-Setup-2.1.0.exe" dosyasını çalıştırın.
 - Kurulum yalnızca sizin kullanıcınız için yapılır; yönetici izni gerekmez.
 - Varsayılan konum: %LocalAppData%\Programs\YekPanel
 - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
 - Kaldırmak için: Başlat > YEK Panel > Kaldır YEK Panel veya
   Windows Ayarlar > Uygulamalar > YEK Panel > Kaldır.
-- Kaldırırken ayarlarınızı ve geçmişinizi de silmek isteyip istemediğiniz sorulur.
-  Varsayılan seçenek verilerinizi korur.
+- Kaldırma ayarlarınıza, geçmişinize ve bildirimlerinize dokunmaz; verileriniz
+  %AppData%\YekPanel altında kalır. Tamamen temizlemek için bu klasörü elle silin.
 
 Taşınabilir sürüm
-- "YEK-Panel-2.0.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
+- "YEK-Panel-2.1.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
 - Masaüstündeki "YEK Panel" kısayolu da aynı uygulamayı açar.
 
 İlk çalıştırma
@@ -101,7 +114,8 @@ Kullanım
   * Günlük özet saatine ulaşınca bir kez özet bildirimi gönderilir.
 - Ayarlar ekranında ESC kapatır. Kapatma düğmesi sağ üsttedir.
 - Hava durumu 10 dakikada, internet ölçümü 20 saniyede, ağ hızı 1 saniyede,
-  süreç listesi 2 saniyede, sıcaklıklar 8 saniyede bir yenilenir.
+  süreç listesi 2 saniyede, sıcaklıklar 8 saniyede, bağlantı kartı 30 saniyede
+  bir yenilenir. Genel IP 10 dakikada bir tazelenir.
 
 Bilgiler
 - Ayarlar dosyası: %AppData%\YekPanel\settings.json

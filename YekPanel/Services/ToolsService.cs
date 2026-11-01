@@ -56,9 +56,12 @@ public static class ToolsService
                 if (address == null)
                     continue;
 
-                adapter = nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211
-                    ? $"Wi-Fi · {nic.Name}"
-                    : $"Ethernet · {nic.Name}";
+                var kind = nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211
+                    ? "Wi-Fi"
+                    : "Ethernet";
+                adapter = string.Equals(nic.Name, kind, StringComparison.OrdinalIgnoreCase)
+                    ? kind
+                    : $"{kind} · {nic.Name}";
                 ipv4 = address.Address.ToString();
 
                 var gw = props.GatewayAddresses

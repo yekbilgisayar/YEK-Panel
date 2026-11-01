@@ -316,7 +316,7 @@
                 <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                     <Ellipse Width="7" Height="7" Fill="#34D399" Margin="0,0,8,0" />
                     <TextBlock Text="YEK PANEL" FontSize="11" FontWeight="Bold" Foreground="#9CC4E8" VerticalAlignment="Center" />
-                    <TextBlock Text="v2.0" FontSize="10" Foreground="#527099" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="v2.1" FontSize="10" Foreground="#527099" Margin="8,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -494,6 +494,87 @@
                                 <TextBlock Text="EN ÇOK BELLEK" Style="{StaticResource CardHint}" HorizontalAlignment="Right" />
                             </Grid>
                             <StackPanel x:Name="ProcessesList" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Sistem & bağlantı kartı -->
+                    <Border Style="{StaticResource Card}" Margin="20,0,20,12">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="SİSTEM &amp; BAĞLANTI" Style="{StaticResource CardTitle}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <TextBlock x:Name="MainConnStatus" Text="güncelleniyor…" FontSize="9"
+                                               Foreground="#5F7FA6" VerticalAlignment="Center"
+                                               MaxWidth="118" TextTrimming="CharacterEllipsis" />
+                                    <Button Style="{StaticResource IconButton}" Content="&#xE72C;" Width="24"
+                                            Height="20" FontSize="10" Margin="3,0,0,0"
+                                            ToolTip="Bağlantı bilgilerini şimdi yenile" Click="RefreshConnection_Click"
+                                            AutomationProperties.Name="Bağlantı bilgilerini yenile" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Margin="0,9,0,0">
+                                <TextBlock Text="PİL" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <TextBlock x:Name="MainBatteryText" Text="—" Style="{StaticResource MetricValue}" FontSize="10.5" />
+                            </Grid>
+                            <TextBlock x:Name="MainBatteryDetail" Text="" FontSize="9" Foreground="#4F6C8F"
+                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+
+                            <Grid Margin="0,6,0,0">
+                                <TextBlock Text="BAĞLANTI" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <TextBlock x:Name="MainAdapterText" Text="—" Style="{StaticResource MetricValue}"
+                                           FontSize="10.5" MaxWidth="212" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <TextBlock Text="YEREL IP" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <TextBlock x:Name="MainIpText" Text="—" Style="{StaticResource MetricValue}"
+                                               FontSize="10.5" ToolTip="Bu bilgisayarın yerel ağ adresi" />
+                                    <Button Content="KOPYALA" Style="{StaticResource ChipButton}" FontSize="8.5"
+                                            FontWeight="SemiBold" Foreground="{DynamicResource AccentSoft}"
+                                            Margin="5,0,0,0" Click="CopyMainIp_Click"
+                                            AutomationProperties.Name="Yerel IP kopyala" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <TextBlock Text="AĞ GEÇİDİ" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <TextBlock x:Name="MainGatewayText" Text="—" Style="{StaticResource MetricValue}" FontSize="10.5" />
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <TextBlock Text="DNS" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <TextBlock x:Name="MainDnsText" Text="—" Style="{StaticResource MetricValue}" FontSize="10.5"
+                                           MaxWidth="230" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <TextBlock Text="KABLOSUZ" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <TextBlock x:Name="MainWifiText" Text="—" Style="{StaticResource MetricValue}" FontSize="10.5"
+                                           MaxWidth="230" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <TextBlock Text="GENEL IP" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <TextBlock x:Name="MainPublicIpText" Text="—" Style="{StaticResource MetricValue}"
+                                               FontSize="10.5" ToolTip="İnternete görünen dış IP adresi" />
+                                    <Button Content="KOPYALA" Style="{StaticResource ChipButton}" FontSize="8.5"
+                                            FontWeight="SemiBold" Foreground="{DynamicResource AccentSoft}"
+                                            Margin="5,0,0,0" Click="CopyMainPublicIp_Click"
+                                            AutomationProperties.Name="Genel IP kopyala ana ekran" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Height="1" Background="#153758" Margin="0,11,0,9" />
+
+                            <Grid>
+                                <TextBlock Text="DİSKLER" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <TextBlock Text="TÜM SÜRÜCÜLER" Style="{StaticResource CardHint}" FontSize="9"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <StackPanel x:Name="MainDriveList" Margin="0,6,0,0" />
                         </StackPanel>
                     </Border>
 
@@ -900,7 +981,7 @@
                         <StackPanel Grid.Row="0">
                             <Grid>
                                 <TextBlock Text="ARAÇ MERKEZİ" Style="{StaticResource CardTitle}" FontSize="12" />
-                                <TextBlock Text="v2.0 · 100 özellik" FontSize="9.5" Foreground="{DynamicResource AccentText}"
+                                <TextBlock Text="v2.1 · 106 özellik" FontSize="9.5" Foreground="{DynamicResource AccentText}"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
                             <TextBlock Text="Sistem, bağlantı, ağ testleri, zamanlayıcı ve bakım araçları."
@@ -1012,6 +1093,9 @@
                                     <Button Content="KOMUT İSTEMİ" Style="{StaticResource GhostButton}" FontSize="9.5"
                                             Padding="9,6" Margin="0,0,5,5" Tag="cmd.exe" Click="QuickLaunch_Click"
                                             AutomationProperties.Name="Komut istemini aç" />
+                                    <Button Content="AĞ AYARLARI" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                            Padding="9,6" Margin="0,0,5,5" Tag="ncpa.cpl" Click="QuickLaunch_Click"
+                                            AutomationProperties.Name="Ağ bağlantılarını aç" />
                                 </WrapPanel>
                                 <Button Content="TANILAMAYI KOPYALA" Style="{StaticResource GhostButton}" FontSize="9.5"
                                         Padding="10,7" Click="CopyDiagnostics_Click" Margin="0,0,0,12"
