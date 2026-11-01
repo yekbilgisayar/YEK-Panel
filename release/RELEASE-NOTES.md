@@ -27,6 +27,10 @@ Windows 10/11 için sistem ve sunucu izleme paneli.
 
 Kurulum paketinde kişisel sunucu adresi, MAC adresi, şehir veya geçmiş bulunmaz. Kaldırırken verilerinizi silmek isteyip istemediğiniz sorulur; varsayılan seçenek korur.
 
+## Lisans
+
+MIT Lisansı. Ayrıntılar için `LICENSE` dosyasına bakın.
+
 ## Doğrulama
 
 - Kurulum ve kaldırma sessiz modda test edildi.
