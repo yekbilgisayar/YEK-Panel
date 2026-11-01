@@ -1,6 +1,8 @@
 # YEK Panel
 
-Windows 10/11 için sistem ve sunucu izleme paneli. Tek dosya olarak çalışır; kurulum gerektirmez. İsteğe bağlı kurulum sihirbazı, masaüstü ve Başlat menüsü kısayolları, kaldırma kaydı içerir.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Windows 10/11 için açık kaynak sistem ve sunucu izleme paneli. Tek dosya olarak çalışır; kurulum gerektirmez. İsteğe bağlı kurulum sihirbazı, masaüstü ve Başlat menüsü kısayolları, kaldırma kaydı içerir.
 
 ![YEK Panel kurulum ekranı](installer/setup-welcome.png)
 
@@ -96,7 +98,7 @@ Ardından GitHub'da **Releases > Draft a new release** ile `v2.0.0` etiketi olu�
 
 ## Lisans
 
-Bu depoya henüz bir açık kaynak lisansı eklenmedi. Lisans eklemek isterseniz MIT, Apache-2.0 veya GPL-3.0 seçeneklerinden birini ekleyebilirsiniz.
+Bu proje **MIT Lisansı** altında açık kaynak olarak yayınlanmıştır. Ayrıntılar için [LICENSE](LICENSE) dosyasına bakın. MIT; kullanım, değiştirme, dağıtma ve ticari kullanım için izin verir; yazılım olduğu gibi sunulur.
 
 ---
 
