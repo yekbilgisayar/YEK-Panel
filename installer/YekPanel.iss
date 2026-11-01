@@ -65,6 +65,10 @@ Root: HKCU; Subkey: "Software\YekPanel"; ValueType: string; ValueName: "Version"
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallRun]
+; Açık uygulama dosyayı kilitlediği için kaldırmadan önce kapatılır.
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""Stop-Process -Name YekPanel -Force -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "StopYekPanel"
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\*.log"
 
@@ -80,5 +84,9 @@ turkish.FinishedLabel=YEK Panel kullanıma hazır. Ayarlar penceresinden kendi s
   silinmesi gerekiyorsa kullanıcı klasörü elle kaldırabilir. }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  { Bilinçli olarak boş: veri klasörüne dokunulmaz. }
+  if CurUninstallStep = usUninstall then
+  begin
+    { Windows açılışında otomatik başlatma kaydı kalmasın. }
+    RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'YekPanel');
+  end;
 end;

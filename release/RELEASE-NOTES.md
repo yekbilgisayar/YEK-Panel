@@ -12,6 +12,7 @@ Windows 10/11 için sistem ve sunucu izleme paneli.
 - Yerel veya genel IP değiştiğinde tepsi bildirimi gösterilir (sessiz saatlerde gösterilmez).
 - Araç merkezine "Ağ ayarları" kısayolu eklendi.
 - Araç merkezindeki bilgi toplama artık arka planda çalışır.
+- Kaldırma sırasında açık uygulama otomatik kapatılır; program dosyaları, kısayollar ve otomatik başlatma kaydı temizlenir. `YekPanel.exe` kilitli kalmaz.
 
 Önceki sürümden gelenler: 100 özellikli Araç Merkezi, 7/30 günlük raporlar, kesintiler, bakım modu, SSL/TCP izleme, mini mod, tema renkleri ve kurulum sihirbazı. Tam liste `OZELLIKLER.txt` içinde (106 özellik).
 
@@ -41,5 +42,6 @@ MIT Lisansı. Ayrıntılar için `LICENSE` dosyasına bakın.
 - v2.1 ana ekran kartı gerçek ağ bilgileriyle çalıştırılıp ekran görüntüsüyle doğrulandı.
 - Kartın 30 saniyelik otomatik yenilemesi ve genel IP tazelemesi test edildi.
 - Kurulum ve kaldırma sessiz modda test edildi.
+- Uygulama açıkken yapılan kaldırmada sürecin kapandığı, `YekPanel.exe` dahil kurulum klasörünün ve otomatik başlatma kaydının silindiği doğrulandı.
 - Kurulum sonrası ilk açılışta sunucu alanlarının boş geldiği doğrulandı.
 - Kaldırma sonrası `%AppData%\YekPanel` kullanıcı verilerinin korunduğu doğrulandı.

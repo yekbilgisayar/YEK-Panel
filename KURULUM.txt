@@ -75,6 +75,8 @@ Kurulum (önerilen)
 - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
 - Kaldırmak için: Başlat > YEK Panel > Kaldır YEK Panel veya
   Windows Ayarlar > Uygulamalar > YEK Panel > Kaldır.
+- Kaldırma sırasında açık olan YEK Panel otomatik kapatılır; program dosyaları
+  ve kısayollar silinir, otomatik başlatma kaydı kaldırılır.
 - Kaldırma ayarlarınıza, geçmişinize ve bildirimlerinize dokunmaz; verileriniz
   %AppData%\YekPanel altında kalır. Tamamen temizlemek için bu klasörü elle silin.
 
