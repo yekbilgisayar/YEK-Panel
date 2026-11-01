@@ -16,13 +16,16 @@ Windows 10/11 için açık kaynak sistem ve sunucu izleme paneli. Tek dosya olar
 - 7/30 günlük çevrimiçi raporu, kesinti listesi, bildirim geçmişi ve CSV dışa aktarma.
 - Sunucu bazında bakım modu, yavaş yanıt eşiği ve SSL bitiş uyarısı.
 - Mini mod, sistem tepsisi, sessiz saatler, günlük özet ve tema renkleri.
+- Tek örnek koruması: ikinci kez açılırsa mevcut pencere öne gelir.
+- GitHub Releases üzerinden güncelleme kontrolü, sürüm notları ve "bu sürümü atla" seçeneği.
+- Beklenmeyen hatalar `%AppData%\YekPanel\crash.log` dosyasına yazılır; sürüm numarası tek kaynaktan gelir.
 
-Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 106 özellik.
+Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 116 özellik.
 
 ## Kaynak kod
 
 - GitHub: [yekbilgisayar/YEK-Panel](https://github.com/yekbilgisayar/YEK-Panel)
-- Kaynak ZIP: [YEK-Panel-2.1.0-kaynak.zip](https://github.com/yekbilgisayar/YEK-Panel/releases/download/v2.1.0/YEK-Panel-2.1.0-kaynak.zip)
+- Kaynak ZIP: [YEK-Panel-2.2.0-kaynak.zip](https://github.com/yekbilgisayar/YEK-Panel/releases/download/v2.2.0/YEK-Panel-2.2.0-kaynak.zip)
 
 Kaynak ZIP içinde uygulama kodu, servisler, kurulum betiği, README ve lisans bulunur; derlenmiş exe veya kişisel ayar dosyası bulunmaz.
 
@@ -30,13 +33,13 @@ Kaynak ZIP içinde uygulama kodu, servisler, kurulum betiği, README ve lisans b
 
 En son sürümü **Releases** bölümünden indirin.
 
-- **Kurulum:** `YEK-Panel-Setup-2.1.0.exe`
+- **Kurulum:** `YEK-Panel-Setup-2.2.0.exe`
   - Yalnızca mevcut kullanıcı için kurulur; yönetici izni gerekmez.
   - Varsayılan konum: `%LocalAppData%\Programs\YekPanel`
   - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
   - Kaldırma: Başlat > YEK Panel > Kaldır YEK Panel veya Windows Ayarlar > Uygulamalar.
   - Kaldırma ayarlara ve geçmişe dokunmaz; veriler `%AppData%\YekPanel` altında kalır.
-- **Taşınabilir:** `YEK-Panel-2.1.0-portable.exe`
+- **Taşınabilir:** `YEK-Panel-2.2.0-portable.exe`
   - Kurulum gerekmez; çift tıklayarak çalıştırın.
 
 İlk açılışta sunucu adresleri **boş** gelir. Kendi adreslerinizi **Ayarlar** ekranından girin. Kurulum paketinde kişisel sunucu adresi, MAC adresi, şehir veya geçmiş bulunmaz.
@@ -48,6 +51,7 @@ En son sürümü **Releases** bölümünden indirin.
 | Ayarlar | `%AppData%\YekPanel\settings.json` |
 | Sunucu geçmişi | `%AppData%\YekPanel\history.json` |
 | Bildirim geçmişi | `%AppData%\YekPanel\notifications.json` |
+| Hata günlüğü | `%AppData%\YekPanel\crash.log` |
 | CSV raporları | `%AppData%\YekPanel\rapor-*.csv` |
 
 Uygulama klasörüne kullanıcı verisi yazılmaz. Kurulumu kaldırmak bu klasörü varsayılan olarak silmez.
@@ -79,22 +83,23 @@ Bu klasör doğrudan bir Git deposu olarak kullanılabilir. `release/*.exe` ve t
 ```powershell
 git init
 git add .
-git commit -m "YEK Panel v2.1"
+git commit -m "YEK Panel v2.2"
 git branch -M main
 git remote add origin https://github.com/KULLANICI/REPO.git
 git push -u origin main
 ```
 
-Ardından GitHub'da **Releases > Draft a new release** ile `v2.1.0` etiketi oluşturun ve şu dosyaları ekleyin:
+Ardından GitHub'da **Releases > Draft a new release** ile `v2.2.0` etiketi oluşturun ve şu dosyaları ekleyin:
 
-- `release/YEK-Panel-Setup-2.1.0.exe`
-- `release/YEK-Panel-2.1.0-portable.exe`
-- `release/YEK-Panel-2.1.0-kaynak.zip`
+- `release/YEK-Panel-Setup-2.2.0.exe`
+- `release/YEK-Panel-2.2.0-portable.exe`
+- `release/YEK-Panel-2.2.0-kaynak.zip`
 - `release/SHA256SUMS.txt`
 
 ## Gizlilik
 
 - Uygulama telemetri göndermez.
+- Güncelleme kontrolü yalnızca GitHub Releases API'sine sürüm sorgusu yapar; kişisel veri göndermez. Ayarlardan kapatılabilir.
 - Hava durumu Open-Meteo, konum ipwho.is servislerinden ücretsiz alınır.
 - Hız testi herkese açık Cloudflare, OVH, ThinkBroadband ve Hetzner sunucularını dener.
 - Sunucu kontrolleri yalnızca sizin girdiğiniz adreslere yapılır.

@@ -158,6 +158,10 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#0E2643" />
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -316,7 +320,7 @@
                 <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                     <Ellipse Width="7" Height="7" Fill="#34D399" Margin="0,0,8,0" />
                     <TextBlock Text="YEK PANEL" FontSize="11" FontWeight="Bold" Foreground="#9CC4E8" VerticalAlignment="Center" />
-                    <TextBlock Text="v2.1" FontSize="10" Foreground="#527099" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="HeaderVersionText" Text="v2.2" FontSize="10" Foreground="#527099" Margin="8,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -812,6 +816,50 @@
                                     <CheckBox x:Name="MaintenanceCloud" Style="{StaticResource DarkCheck}" Content="Nextcloud" FontSize="11" />
                                 </UniformGrid>
 
+                                <TextBlock Text="HAKKINDA &amp; GÜNCELLEME" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,2,0,6">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock x:Name="AboutVersionText" Text="YEK Panel v2.2.0" FontSize="10.5"
+                                                       FontWeight="SemiBold" Foreground="#EAF4FF"
+                                                       AutomationProperties.AutomationId="UpdateVersion" />
+                                            <TextBlock x:Name="AboutFeatureText" Text="116 özellik" FontSize="9.5"
+                                                       Foreground="{DynamicResource AccentText}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <TextBlock x:Name="UpdateStatusText" Text="Güncelleme durumu bilinmiyor."
+                                                   FontSize="9.5" Foreground="#7396BE" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                   AutomationProperties.AutomationId="UpdateStatus" />
+                                        <WrapPanel Margin="0,7,0,0">
+                                            <Button x:Name="CheckUpdateButton" Content="KONTROL ET"
+                                                    Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
+                                                    Margin="0,0,5,5" Click="CheckUpdates_Click"
+                                                    AutomationProperties.Name="Güncelleme kontrol et"
+                                                    AutomationProperties.AutomationId="UpdateCheck" />
+                                            <Button x:Name="ReleaseNotesButton" Content="SÜRÜM NOTLARI"
+                                                    Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
+                                                    Margin="0,0,5,5" Click="OpenReleaseNotes_Click"
+                                                    AutomationProperties.Name="Sürüm notlarını aç"
+                                                    AutomationProperties.AutomationId="UpdateNotes" />
+                                        </WrapPanel>
+                                        <WrapPanel>
+                                            <Button x:Name="SkipVersionButton" Content="BU SÜRÜMÜ ATLA"
+                                                    Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
+                                                    Margin="0,0,5,5" Click="SkipVersion_Click"
+                                                    AutomationProperties.Name="Bu sürümü atla"
+                                                    AutomationProperties.AutomationId="UpdateSkip" />
+                                            <Button x:Name="ErrorLogButton" Content="HATA GÜNLÜĞÜ"
+                                                    Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
+                                                    Margin="0,0,5,5" Click="OpenErrorLog_Click"
+                                                    AutomationProperties.Name="Hata günlüğünü aç"
+                                                    AutomationProperties.AutomationId="UpdateLog" />
+                                        </WrapPanel>
+                                        <CheckBox x:Name="AutoUpdateCheck" Style="{StaticResource DarkCheck}"
+                                                  Content="Açılışta güncelleme kontrol et" FontSize="11" Margin="0,5,0,0" />
+                                    </StackPanel>
+                                </Border>
+
                                 <TextBlock Text="Sıcaklık sensörleri için uygulamayı yönetici olarak çalıştırın (tepsi menüsü)."
                                            FontSize="9" Foreground="#4F6C8F" TextWrapping="Wrap" Margin="2,8,0,0" />
                             </StackPanel>
@@ -981,7 +1029,7 @@
                         <StackPanel Grid.Row="0">
                             <Grid>
                                 <TextBlock Text="ARAÇ MERKEZİ" Style="{StaticResource CardTitle}" FontSize="12" />
-                                <TextBlock Text="v2.1 · 106 özellik" FontSize="9.5" Foreground="{DynamicResource AccentText}"
+                                <TextBlock x:Name="ToolsVersionText" Text="v2.2 · 116 özellik" FontSize="9.5" Foreground="{DynamicResource AccentText}"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
                             <TextBlock Text="Sistem, bağlantı, ağ testleri, zamanlayıcı ve bakım araçları."
@@ -1178,6 +1226,11 @@
             <Grid x:Name="FooterRow" Grid.Row="3" Margin="20,2,20,12">
                 <TextBlock x:Name="LastUpdateText" Text="Son kontrol —" FontSize="10.5" Foreground="#6F8CB0" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="UpdateButton" Style="{StaticResource IconButton}" Content="&#xE896;"
+                            ToolTip="Yeni sürüm hazır" Click="UpdateButton_Click"
+                            AutomationProperties.Name="Yeni sürüm" Visibility="Collapsed"
+                            AutomationProperties.AutomationId="UpdateBadge"
+                            Foreground="{DynamicResource AccentSoft}" Margin="0,0,2,0" />
                     <Button x:Name="ToolsButton" Style="{StaticResource IconButton}" Content="&#xE9D9;"
                             ToolTip="Araç merkezi (Ctrl+K)" Click="OpenTools_Click"
                             AutomationProperties.Name="Araç merkezi" />

@@ -1,4 +1,4 @@
-﻿YEK PANEL v2.1
+﻿YEK PANEL v2.2
 ==============
 
 Ne yapar?
@@ -14,8 +14,27 @@ Ne yapar?
 - İnternet gecikmesini (ping, ms) izler; sağ altta yeşil/kırmızı nokta.
 - Sistem tepsisinde çalışır; kapatınca tepsiye küçültülebilir.
 - Sunucu sorunlarında tepsi bildirimi gösterir; sessiz saatler ve günlük özet desteklenir.
+- Uygulama iki kez açılmaz; ikinci denemede mevcut pencere öne gelir.
+- GitHub üzerinden yeni sürüm olup olmadığını kontrol eder; isterseniz kapatabilirsiniz.
 
-v2.1 yenilikleri (6 yeni özellik)
+v2.2 yenilikleri (10 yeni özellik)
+- Tek örnek koruması: YEK Panel zaten açıksa ikinci pencere açılmaz,
+  var olan pencere öne getirilir (tepside gizliyse de görünür olur).
+- Güncelleme kontrolü: GitHub Releases üzerinden en son sürüm 24 saatte
+  bir kontrol edilir. Yeni sürüm varsa alt çubukta indirme simgesi belirir
+  ve tepsi bildirimi gösterilir (sessiz saatlerde gösterilmez).
+- Ayarlar > HAKKINDA & GÜNCELLEME: sürüm numarası, kontrol düğmesi,
+  sürüm notları, "bu sürümü atla / atlamayı geri al" ve hata günlüğü.
+- Açılışta güncelleme kontrolü seçeneği; kapatılırsa hiçbir istek yapılmaz.
+- Hata günlüğü: beklenmeyen hatalar %AppData%\YekPanel\crash.log dosyasına
+  yazılır; 256 KB'a ulaşınca crash.old.log olarak döndürülür.
+- Arayüz veya arka plan görevinde hata oluşursa uygulama kapanmaz; uyarı
+  gösterip çalışmaya devam eder.
+- Sürüm numarası artık tek kaynaktan (proje dosyası) gelir; başlık çubuğu,
+  Araç Merkezi ve Hakkında bölümü otomatik güncellenir.
+- Tepsi menüsüne "Güncelleme kontrol et" eklendi.
+
+v2.1 yenilikleri (6 yeni özellik · v2.2'de korunuyor)
 - Ana ekranda SİSTEM & BAĞLANTI kartı:
   * Pil yüzdesi ve şarj durumu.
   * Bağlantı türü, adaptör adı ve bağlantı hızı.
@@ -28,7 +47,7 @@ v2.1 yenilikleri (6 yeni özellik)
 - Yerel veya genel IP değişince tepsi bildirimi (sessiz saatlerde gösterilmez).
 - Araç merkezine "Ağ ayarları" kısayolu eklendi.
 
-v2.0 yenilikleri (38 yeni özellik · v2.1'de korunuyor)
+v2.0 yenilikleri (38 yeni özellik · v2.1 ve v2.2'de korunuyor)
 - ARAÇ MERKEZİ (Ctrl+K veya alt sağdaki araç simgesi):
   * Pil yüzdesi, şarj durumu ve kalan süre.
   * Bağlantı türü, bağlantı hızı, yerel IP, ağ geçidi, DNS ve Wi-Fi SSID/sinyal.
@@ -41,7 +60,7 @@ v2.0 yenilikleri (38 yeni özellik · v2.1'de korunuyor)
   * Kalıcı hızlı not.
   * Ayarları JSON olarak yedekleme, yedekten geri yükleme.
   * Geçmiş/bildirim verilerini temizleme ve bildirim testi.
-  * 106 özellik listesini açma.
+  * 116 özellik listesini açma.
 - Geçmiş & rapor:
   * 7 gün ve 30 gün arasında geçiş.
   * Kesinti (incident) listesi: başlangıç zamanı ve süre.
@@ -60,7 +79,7 @@ v2.0 yenilikleri (38 yeni özellik · v2.1'de korunuyor)
 - Bildirimler:
   * Günlük özet bildirimi ve saati (son 24 saatteki sorun sayısı dahil).
 - Tepsi menüsüne Araç merkezi, Mini mod, Hız testi ve Sessiz saatler eklendi.
-- Başlık çubuğunda v2.1 etiketi.
+- Başlık çubuğunda dinamik sürüm etiketi.
 
 Önceki sürümlerden gelenler
 - v1.4: SSL sayacı, TCP port kontrolü, 7 günlük rapor, bildirim geçmişi, sessiz saatler,
@@ -69,7 +88,7 @@ v2.0 yenilikleri (38 yeni özellik · v2.1'de korunuyor)
   24 saatlik çevrimiçi oranı, hava durumu detay kartı, hatırlanan pencere konumu.
 
 Kurulum (önerilen)
-- "YEK-Panel-Setup-2.1.0.exe" dosyasını çalıştırın.
+- "YEK-Panel-Setup-2.2.0.exe" dosyasını çalıştırın.
 - Kurulum yalnızca sizin kullanıcınız için yapılır; yönetici izni gerekmez.
 - Varsayılan konum: %LocalAppData%\Programs\YekPanel
 - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
@@ -81,7 +100,7 @@ Kurulum (önerilen)
   %AppData%\YekPanel altında kalır. Tamamen temizlemek için bu klasörü elle silin.
 
 Taşınabilir sürüm
-- "YEK-Panel-2.1.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
+- "YEK-Panel-2.2.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
 - Masaüstündeki "YEK Panel" kısayolu da aynı uygulamayı açar.
 
 İlk çalıştırma
@@ -104,6 +123,8 @@ Kullanım
 - Alt sağdaki yenile simgesi: sunucuları ve interneti hemen kontrol eder.
 - Alt sağdaki geçmiş simgesi: 7/30 günlük rapor, kesintiler ve bildirim geçmişi (Ctrl+H).
 - Alt sağdaki araç simgesi: Araç merkezi (Ctrl+K).
+- Alt sağdaki indirme simgesi: yeni sürüm hazır olduğunda görünür;
+  tıklayınca Ayarlar > Hakkında bölümü açılır ve kontrol başlar.
 - Alt sağdaki dişli simgesi: ayarlar.
   * Sunucu adresleri ve MAC adresleri düzenlenir (boş bırakılan satır kontrol edilmez).
   * Her sunucu için ayrı "bakım modu" işaretlenebilir.
@@ -114,6 +135,10 @@ Kullanım
   * Pencere saydamlığı −/+ düğmeleriyle değiştirilir; KAYDET ile kalıcı olur.
   * Yavaş yanıt eşiği 100–30000 ms arasında girilebilir.
   * Günlük özet saatine ulaşınca bir kez özet bildirimi gönderilir.
+  * HAKKINDA & GÜNCELLEME: sürüm numarası, elle kontrol, sürüm notları,
+    sürüm atlama, hata günlüğü ve açılışta kontrol seçeneği.
+- Uygulama zaten açıkken yeniden başlatılırsa yeni pencere açılmaz;
+  mevcut pencere öne getirilir.
 - Ayarlar ekranında ESC kapatır. Kapatma düğmesi sağ üsttedir.
 - Hava durumu 10 dakikada, internet ölçümü 20 saniyede, ağ hızı 1 saniyede,
   süreç listesi 2 saniyede, sıcaklıklar 8 saniyede, bağlantı kartı 30 saniyede
@@ -123,6 +148,7 @@ Bilgiler
 - Ayarlar dosyası: %AppData%\YekPanel\settings.json
 - Sunucu geçmişi: %AppData%\YekPanel\history.json (30 günlük rapor için, 31 gün saklanır)
 - Bildirim geçmişi: %AppData%\YekPanel\notifications.json (son 200 olay)
+- Hata günlüğü: %AppData%\YekPanel\crash.log (256 KB'da crash.old.log olarak döner)
 - CSV raporları: %AppData%\YekPanel\rapor-*.csv
 - "AYARLARI YEDEKLE" seçilen JSON dosyasına kopyalar; "GERİ YÜKLE" dosyayı
   settings.json üzerine yazıp uygulamayı yeniden başlatır.
@@ -130,6 +156,8 @@ Bilgiler
 - Bilgisayar verileri 1 saniyede bir, sunucu durumu seçilen aralıkta yenilenir.
 - İlk kontrol uygulama açılırken yapılır; internet/sunucu erişimi gerekir.
 - Hava durumu Open-Meteo, konum ipwho.is, genel IP ipify/ifconfig.me üzerinden ücretsiz alınır.
+- Güncelleme kontrolü yalnızca GitHub Releases API'sine sürüm sorgusu yapar;
+  kişisel veri göndermez. 24 saatte bir çalışır ve ayarlardan kapatılabilir.
 - Hız testi sırasıyla Cloudflare, OVH, ThinkBroadband ve Hetzner sunucularını dener.
 - SSL bilgisi başarılı kontrolde 6 saat, hatalı kontrolde 10 dakika önbellekte tutulur.
 - "Kapatınca tepsiye küçült" kapalıysa Kapat düğmesi uygulamayı tamamen kapatır.

@@ -41,6 +41,13 @@ public sealed class AppSettings
     public string LastSummaryDate { get; set; } = "";
     public string QuickNote { get; set; } = "";
 
+    public bool AutoUpdateCheck { get; set; } = true;
+    public string LastUpdateCheck { get; set; } = "";
+    public string SkippedVersion { get; set; } = "";
+    public string LatestVersion { get; set; } = "";
+    public string LatestReleaseUrl { get; set; } = "";
+    public string LatestReleaseName { get; set; } = "";
+
     public static List<EndpointConfig> DefaultEndpoints() => new()
     {
         new EndpointConfig { Name = "Web Sitesi", Url = "" },
@@ -136,6 +143,11 @@ public static class SettingsStore
         if (settings.QuickNote.Length > 2000)
             settings.QuickNote = settings.QuickNote[..2000];
         settings.LastSummaryDate = (settings.LastSummaryDate ?? "").Trim();
+        settings.LastUpdateCheck = (settings.LastUpdateCheck ?? "").Trim();
+        settings.SkippedVersion = Trim(settings.SkippedVersion, 32);
+        settings.LatestVersion = Trim(settings.LatestVersion, 32);
+        settings.LatestReleaseUrl = Trim(settings.LatestReleaseUrl, 500);
+        settings.LatestReleaseName = Trim(settings.LatestReleaseName, 200);
 
         var defaults = AppSettings.DefaultEndpoints();
         if (settings.Endpoints == null)
@@ -157,6 +169,12 @@ public static class SettingsStore
             settings.Endpoints[i].Url = NormalizeUrl(settings.Endpoints[i].Url);
             settings.Endpoints[i].Mac = (settings.Endpoints[i].Mac ?? "").Trim();
         }
+    }
+
+    private static string Trim(string? value, int maxLength)
+    {
+        var text = (value ?? "").Trim();
+        return text.Length > maxLength ? text[..maxLength] : text;
     }
 
     private static string NormalizeClock(string? value, string fallback)

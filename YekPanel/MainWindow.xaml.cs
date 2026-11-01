@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -88,6 +90,8 @@ public partial class MainWindow : Window
     private WeatherInfo? _weather;
     private bool _weatherLoading;
     private bool _checking;
+    private bool _checkingUpdate;
+    private ReleaseInfo? _latestRelease;
     private bool _ipLoading;
     private bool _connectionLoading;
     private DateTime? _countdownEnd;
@@ -118,6 +122,7 @@ public partial class MainWindow : Window
         Topmost = _settings.Topmost;
         UpdatePinVisual();
         InitializeTray();
+        InitializeAboutInfo();
 
         _serverTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_settings.RefreshSeconds) };
         _serverTimer.Tick += async (_, _) => await CheckServersAsync();
@@ -158,6 +163,7 @@ public partial class MainWindow : Window
             _ = UpdateTemperaturesAsync();
             _ = RefreshPublicIpAsync();
             _ = RefreshConnectionAsync(force: true);
+            _ = MaybeCheckUpdatesAsync();
 
             if (_settings.RememberMini && _settings.MiniMode)
                 ToggleMini();
@@ -1197,6 +1203,12 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(new Action(() => SpeedTest_Click(this, new RoutedEventArgs())));
             });
 
+            menu.Items.Add("Güncelleme kontrol et", null, (_, _) =>
+            {
+                ShowFromTray();
+                Dispatcher.BeginInvoke(new Action(() => _ = CheckForUpdatesAsync(manual: true)));
+            });
+
             var quietItem = new Forms.ToolStripMenuItem("Sessiz saatler")
             {
                 CheckOnClick = true,
@@ -1238,6 +1250,257 @@ public partial class MainWindow : Window
         Show();
         WindowState = WindowState.Normal;
         Activate();
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    /// <summary>İkinci örnekten gelen etkinleştirme isteğinde pencereyi öne getirir.</summary>
+    public void BringToFront()
+    {
+        if (!IsVisible)
+            Show();
+
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+
+        Activate();
+
+        try
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (handle != IntPtr.Zero)
+                SetForegroundWindow(handle);
+        }
+        catch
+        {
+        }
+    }
+
+    private void InitializeAboutInfo()
+    {
+        HeaderVersionText.Text = AppInfo.VersionLabel;
+        ToolsVersionText.Text = $"{AppInfo.VersionLabel} · {AppInfo.FeatureCount} özellik";
+        UpdateAboutState();
+    }
+
+    private void UpdateAboutState()
+    {
+        AboutVersionText.Text = $"YEK Panel v{AppInfo.VersionFull}";
+        AboutFeatureText.Text = $"{AppInfo.FeatureCount} özellik";
+        AutoUpdateCheck.IsChecked = _settings.AutoUpdateCheck;
+
+        ErrorLogButton.IsEnabled = AppLog.HasEntries;
+        ErrorLogButton.ToolTip = AppLog.HasEntries ? AppLog.FilePath : "Henüz kayıtlı hata yok.";
+
+        var hasStored = UpdateService.TryParseVersion(_settings.LatestVersion, out var latest);
+        var hasNewer = hasStored && UpdateService.IsNewer(latest);
+        var skipped = hasStored && IsSkipped(latest);
+
+        SkipVersionButton.Content = skipped ? "ATLAMAYI GERİ AL" : "BU SÜRÜMÜ ATLA";
+        AutomationProperties.SetName(
+            SkipVersionButton,
+            skipped ? "Atlamayı geri al" : "Bu sürümü atla");
+        SkipVersionButton.IsEnabled = hasStored && (hasNewer || skipped);
+
+        if (hasNewer && !skipped)
+        {
+            UpdateButton.Visibility = Visibility.Visible;
+            UpdateButton.ToolTip = $"Yeni sürüm v{latest} hazır";
+            if (!_checkingUpdate)
+                UpdateStatusText.Text = $"Yeni sürüm hazır: v{latest} · şu an v{AppInfo.VersionFull}";
+        }
+        else
+        {
+            UpdateButton.Visibility = Visibility.Collapsed;
+            if (!_checkingUpdate)
+                UpdateStatusText.Text = skipped && hasStored
+                    ? $"v{latest} sürümü atlandı. SÜRÜM NOTLARI ile inceleyebilirsiniz."
+                    : LastCheckText();
+        }
+    }
+
+    private string LastCheckText() =>
+        DateTime.TryParse(
+            _settings.LastUpdateCheck,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out var last)
+            ? $"Son kontrol: {last.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Tr)}"
+            : "Henüz güncelleme kontrolü yapılmadı.";
+
+    private bool IsSkipped(Version version) =>
+        UpdateService.TryParseVersion(_settings.SkippedVersion, out var skipped) && skipped == version;
+
+    private async Task MaybeCheckUpdatesAsync()
+    {
+        if (!_settings.AutoUpdateCheck)
+            return;
+
+        if (DateTime.TryParse(
+                _settings.LastUpdateCheck,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out var last) &&
+            DateTime.UtcNow - last.ToUniversalTime() < TimeSpan.FromHours(24))
+            return;
+
+        await CheckForUpdatesAsync(manual: false);
+    }
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (_checkingUpdate)
+            return;
+
+        _checkingUpdate = true;
+        CheckUpdateButton.IsEnabled = false;
+
+        if (manual)
+            UpdateStatusText.Text = "Güncelleme kontrol ediliyor…";
+
+        try
+        {
+            var previous = _settings.LatestVersion;
+            var release = await UpdateService.GetLatestAsync();
+            _settings.LastUpdateCheck = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+
+            if (release == null)
+            {
+                SettingsStore.Save(_settings);
+                UpdateAboutState();
+                UpdateStatusText.Text = "Güncelleme sunucusuna ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin.";
+                return;
+            }
+
+            _settings.LatestVersion = $"{release.Version.Major}.{release.Version.Minor}.{release.Version.Build}";
+            _settings.LatestReleaseUrl = release.PageUrl;
+            _settings.LatestReleaseName = release.Name;
+            _latestRelease = release;
+            SettingsStore.Save(_settings);
+
+            var skipped = IsSkipped(release.Version);
+            var newer = UpdateService.IsNewer(release.Version);
+
+            if (newer && !skipped)
+            {
+                UpdateStatusText.Text =
+                    $"Yeni sürüm hazır: v{_settings.LatestVersion} · şu an v{AppInfo.VersionFull}";
+                UpdateButton.Visibility = Visibility.Visible;
+                UpdateButton.ToolTip = $"Yeni sürüm v{_settings.LatestVersion} hazır";
+
+                if (!manual && previous != _settings.LatestVersion)
+                    ShowBalloon(
+                        "YEK Panel · Güncelleme",
+                        $"Yeni sürüm v{_settings.LatestVersion} hazır. " +
+                        "Ayarlar > Hakkında & Güncelleme bölümünden inceleyebilirsiniz.",
+                        Forms.ToolTipIcon.Info);
+            }
+            else if (newer)
+            {
+                UpdateStatusText.Text =
+                    $"v{_settings.LatestVersion} sürümü atlandı. Geri almak için aynı düğmeyi kullanın.";
+                UpdateButton.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                UpdateStatusText.Text = $"En son sürümü kullanıyorsunuz (v{AppInfo.VersionFull}).";
+                UpdateButton.Visibility = Visibility.Collapsed;
+            }
+
+            SkipVersionButton.Content = skipped ? "ATLAMAYI GERİ AL" : "BU SÜRÜMÜ ATLA";
+            SkipVersionButton.IsEnabled = newer || skipped;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Güncelleme kontrolü", ex);
+            UpdateStatusText.Text = "Güncelleme kontrolünde beklenmeyen hata oluştu.";
+        }
+        finally
+        {
+            _checkingUpdate = false;
+            CheckUpdateButton.IsEnabled = true;
+        }
+    }
+
+    private void CheckUpdates_Click(object sender, RoutedEventArgs e) =>
+        _ = CheckForUpdatesAsync(manual: true);
+
+    private void UpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenSettings();
+        Dispatcher.BeginInvoke(
+            new Action(() => AboutVersionText.BringIntoView()),
+            DispatcherPriority.Loaded);
+        _ = CheckForUpdatesAsync(manual: true);
+    }
+
+    private void OpenReleaseNotes_Click(object sender, RoutedEventArgs e)
+    {
+        var url = !string.IsNullOrWhiteSpace(_settings.LatestReleaseUrl)
+            ? _settings.LatestReleaseUrl
+            : AppInfo.ReleasesUrl;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Sürüm notları", ex);
+            UpdateStatusText.Text = url;
+        }
+    }
+
+    private void SkipVersion_Click(object sender, RoutedEventArgs e)
+    {
+        var hasStored = UpdateService.TryParseVersion(_settings.LatestVersion, out var latest);
+
+        if (hasStored && IsSkipped(latest))
+        {
+            _settings.SkippedVersion = "";
+            SettingsStore.Save(_settings);
+            _latestRelease = null;
+            UpdateAboutState();
+            UpdateStatusText.Text = "Atlanan sürüm geri alındı.";
+            return;
+        }
+
+        if (!hasStored || !UpdateService.IsNewer(latest))
+        {
+            UpdateAboutState();
+            return;
+        }
+
+        _settings.SkippedVersion = _settings.LatestVersion;
+        SettingsStore.Save(_settings);
+        _latestRelease = null;
+        UpdateAboutState();
+        UpdateStatusText.Text = $"v{latest} sürümü atlandı. Geri almak için aynı düğmeyi kullanın.";
+    }
+
+    private void OpenErrorLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (!AppLog.HasEntries)
+        {
+            UpdateStatusText.Text = "Henüz kayıtlı hata yok.";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "notepad.exe",
+                Arguments = $"\"{AppLog.FilePath}\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Hata günlüğü açma", ex);
+            UpdateStatusText.Text = $"Günlük açılamadı: {AppLog.FilePath}";
+        }
     }
 
     protected override void OnClosed(EventArgs e)
@@ -1832,6 +2095,7 @@ public partial class MainWindow : Window
         OpacityValue.Text = $"%{(_pendingOpacity * 100).ToString("0", Tr)}";
         _selectedAccent = _settings.Accent;
         UpdateAccentSwatches();
+        UpdateAboutState();
         HistoryOverlay.Visibility = Visibility.Collapsed;
         WeatherOverlay.Visibility = Visibility.Collapsed;
         ToolsOverlay.Visibility = Visibility.Collapsed;
@@ -1880,6 +2144,7 @@ public partial class MainWindow : Window
         _settings.MiniMode = _miniMode;
         _settings.DailySummaryEnabled = DailySummaryCheck.IsChecked == true;
         _settings.DailySummaryTime = NormalizeClock(SummaryTimeBox.Text, _settings.DailySummaryTime);
+        _settings.AutoUpdateCheck = AutoUpdateCheck.IsChecked == true;
         _settings.WindowOpacity = _pendingOpacity;
         _settings.City = CityBox.Text.Trim();
         _settings.Accent = _selectedAccent;
@@ -1900,6 +2165,7 @@ public partial class MainWindow : Window
         _ = CheckServersAsync();
         _ = RefreshWeatherAsync();
         _ = UpdateTemperaturesAsync();
+        _ = MaybeCheckUpdatesAsync();
     }
 
     private static string NormalizeClock(string? text, string fallback) =>

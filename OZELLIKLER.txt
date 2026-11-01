@@ -1,8 +1,9 @@
-﻿YEK PANEL v2.1 · 106 ÖZELLİK
+﻿YEK PANEL v2.2 · 116 ÖZELLİK
 ============================================================
 
-Toplam 106 özellik: 6'sı v2.1'de yeni, 100'ü önceki sürümlerden geliyor.
-[YENİ v2.1] = bu sürümde eklendi   [YENİ v2.0] = v2.0'da eklendi   [MEVCUT] = daha önce vardı
+Toplam 116 özellik: 10'u v2.2'de yeni, 6'sı v2.1'de, 100'ü önceki sürümlerden geliyor.
+[YENİ v2.2] = bu sürümde eklendi   [YENİ v2.1] = v2.1'de eklendi
+[YENİ v2.0] = v2.0'da eklendi   [MEVCUT] = daha önce vardı
 
 GÖRÜNÜM & PENCERE
 1) Koyu lacivert özel tema ve yuvarlatılmış pencere — [MEVCUT]
@@ -120,7 +121,7 @@ KISAYOLLAR & TEPSİ
 97) Ctrl+M ile mini mod — [MEVCUT]
 98) Ctrl+T ile her zaman üstte — [MEVCUT]
 99) Ctrl+H ile geçmiş ve rapor — [MEVCUT]
-100) Tepsi menüsü: göster, yenile, araç merkezi, mini mod, hız testi, sessiz saatler, çıkış — [MEVCUT]
+100) Tepsi menüsü: göster, yenile, güncelleme kontrol et, araç merkezi, mini mod, hız testi, sessiz saatler, çıkış — [MEVCUT]
 
 v2.1 YENİ ÖZELLİKLER
 101) Ana ekranda pil, bağlantı türü/hızı, yerel IP, ağ geçidi, DNS, Wi-Fi ve genel IP'yi gösteren SİSTEM & BAĞLANTI kartı — [YENİ v2.1]
@@ -130,9 +131,22 @@ v2.1 YENİ ÖZELLİKLER
 105) Tüm disklerin ana ekranda yüzde çubuklarıyla listelenmesi — [YENİ v2.1]
 106) Yerel veya genel IP değişince tepsi bildirimi — [YENİ v2.1]
 
+v2.2 YENİ ÖZELLİKLER
+107) Tek örnek koruması: uygulama ikinci kez açılırsa yeni pencere açılmaz — [YENİ v2.2]
+108) İkinci çalıştırmada mevcut pencerenin otomatik öne getirilmesi — [YENİ v2.2]
+109) GitHub Releases üzerinden otomatik güncelleme kontrolü (24 saat önbellek) — [YENİ v2.2]
+110) Elle güncelleme kontrolü ve sürüm notları bağlantısı — [YENİ v2.2]
+111) Yeni sürüm bulununca alt çubuk rozeti ve tepsi bildirimi — [YENİ v2.2]
+112) İstenmeyen sürümü atlama ve atlamayı geri alma — [YENİ v2.2]
+113) Açılışta güncelleme kontrolü seçeneği — [YENİ v2.2]
+114) Beklenmeyen hataları crash.log dosyasına yazma (256 KB'da döndürme) — [YENİ v2.2]
+115) Arayüz ve arka plan hatalarında uygulamanın çalışmaya devam etmesi — [YENİ v2.2]
+116) Sürüm numarasının tek kaynaktan gelmesi; başlık ve Hakkında etiketlerinin dinamik olması — [YENİ v2.2]
+
 ------------------------------------------------------------
-Not: Ana ekran bağlantı kartı, IP değişim bildirimi ve tek tıkla
-IP kopyalama v2.1'in ana yenilikleridir. 7/30 günlük rapor,
-kesintiler, araç merkezi, güvenlik/SSL uyarısı ve bakım modu
-v2.0'dan gelir. Veriler %AppData%\YekPanel klasöründe JSON/CSV
-olarak tutulur.
+Not: v2.2'nin ana yenilikleri tek örnek koruması, GitHub
+güncelleme kontrolü ve hata günlüğüdür. v2.1'den ana ekran
+bağlantı kartı, IP kopyalama ve değişim bildirimi; v2.0'dan
+7/30 günlük rapor, kesintiler, araç merkezi, güvenlik/SSL
+uyarısı ve bakım modu gelir. Veriler %AppData%\YekPanel
+klasöründe JSON/CSV olarak tutulur.
