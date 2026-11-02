@@ -26,7 +26,11 @@ Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 134 özellik.
 
 ## Android
 
-YEK Panel'in Android sürümü de aynı depoda: pil detayları, bellek, depolama, CPU ve ağ paneli; sunucu izleme (HTTP/SSL), indirme hız testi, DNS/port tanılama, dış IP, canlı sensörler, eşik uyarıları, sessiz saatler, notlar, günlük hatırlatıcılar ve JSON yedekleme. APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.1.0.apk`); **Google Play Store sürümü yakında**. Kaynak kod `android/` klasöründe.
+YEK Panel'in Android sürümü de aynı depoda: pil detayları, bellek, depolama, CPU ve ağ paneli; sunucu izleme (HTTP/SSL), indirme hız testi, DNS/port tanılama, dış IP, canlı sensörler, eşik uyarıları, sessiz saatler, notlar, günlük hatırlatıcılar ve JSON yedekleme.
+
+Yeni **Android 1.2.0** ile telefon, aynı yerel ağdaki Windows bilgisayara bağlanır: CPU/RAM/disk, ağ hızı, pil/sıcaklık ve en yoğun 5 işlem canlı görünür. Bağlantı 6 haneli PIN ve isteğe bağlı UDP keşif ile korunur. Windows tarafında ayrı çalışan [PC Köprüsü](pc-bridge/README.md) bulunur; masaüstü YEK Panel'e dokunmaz. Android uygulaması ayrıca GitHub Releases üzerinden güncelleme denetler, APK'yı indirir ve kurulum için Android onayı ister.
+
+APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.2.0.apk`); PC köprüsü `YEK-Panel-PC-Koprusu-1.0.0.zip` olarak aynı sürümde yayınlanır. **Google Play Store sürümü yakında** (mağaza sürümünde güncellemeler Play üzerinden yapılır). Kaynak kod `android/` ve `pc-bridge/` klasörlerinde.
 
 ## Kaynak kod
 
@@ -47,9 +51,16 @@ En son sürümü **Releases** bölümünden indirin.
   - Kaldırma ayarlara ve geçmişe dokunmaz; veriler `%AppData%\YekPanel` altında kalır.
 - **Taşınabilir:** `YEK-Panel-2.3.0-portable.exe`
   - Kurulum gerekmez; çift tıklayarak çalıştırın.
-- **Android:** `YEK-Panel-Android-1.1.0.apk`
+- **Android:** `YEK-Panel-Android-1.2.0.apk`
   - Android 8.0 ve üzeri; APK'yı telefona kopyalayıp kurun (bilinmeyen kaynak izni gerekir).
   - Test imzalıdır; Google Play Store sürümü yakında.
+  - Güncellemeler GitHub Releases içindeki `android-*` sürümlerinden denetlenir;
+    yeni APK indirilir, kurulumu Android'in onay ekranı tamamlar.
+- **PC Köprüsü:** `YEK-Panel-PC-Koprusu-1.0.0.zip`
+  - Windows 10/11; ZIP'i açın ve `Baslat.bat` dosyasına çift tıklayın.
+  - İlk çalıştırmada rastgele 6 haneli PIN üretir; konsolda IP ve PIN görünür.
+  - Windows güvenlik duvarında yalnızca **Özel ağ** izni verin. Ayrıntılar:
+    [pc-bridge/README.md](pc-bridge/README.md).
 
 İlk açılışta sunucu adresleri **boş** gelir. Kendi adreslerinizi **Ayarlar** ekranından girin. Kurulum paketinde kişisel sunucu adresi, MAC adresi, şehir veya geçmiş bulunmaz.
 
@@ -62,6 +73,7 @@ En son sürümü **Releases** bölümünden indirin.
 | Bildirim geçmişi | `%AppData%\YekPanel\notifications.json` |
 | Hata günlüğü | `%AppData%\YekPanel\crash.log` |
 | CSV raporları | `%AppData%\YekPanel\rapor-*.csv` |
+| PC köprüsü ayarı (PIN/port) | `%AppData%\YekPanelBridge\config.json` |
 
 Uygulama klasörüne kullanıcı verisi yazılmaz. Kurulumu kaldırmak bu klasörü varsayılan olarak silmez.
 

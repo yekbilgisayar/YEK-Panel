@@ -2,6 +2,21 @@
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:enabled="true"
+        android:icon="@drawable/ic_nav_pc"
+        android:shortcutId="pc"
+        android:shortcutLongLabel="@string/shortcut_pc_long"
+        android:shortcutShortLabel="@string/shortcut_pc">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.yekbilgisayar.yekpanel.MainActivity"
+            android:targetPackage="com.yekbilgisayar.yekpanel">
+            <extra
+                android:name="page"
+                android:value="1" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
         android:icon="@drawable/ic_nav_tools"
         android:shortcutId="tools"
         android:shortcutLongLabel="@string/shortcut_tools_long"
@@ -12,7 +27,7 @@
             android:targetPackage="com.yekbilgisayar.yekpanel">
             <extra
                 android:name="page"
-                android:value="1" />
+                android:value="2" />
         </intent>
     </shortcut>
     <shortcut
@@ -27,7 +42,7 @@
             android:targetPackage="com.yekbilgisayar.yekpanel">
             <extra
                 android:name="page"
-                android:value="2" />
+                android:value="3" />
         </intent>
     </shortcut>
 </shortcuts>

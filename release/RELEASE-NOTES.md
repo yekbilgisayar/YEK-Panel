@@ -17,6 +17,22 @@ Windows 10/11 için sistem ve sunucu izleme paneli.
 - **Kart düzeni:** Ana ekran kartlarını yukarı/aşağı taşıma, gizleme ve düzeni kalıcı saklama.
 - **Araç Merkezi sekmeleri:** GENEL, OTOMASYON, AĞ ve ARAÇLAR sekmeleri; her sekme bağımsız kaydırılır.
 
+## Android 1.2.0
+
+Android uygulaması artık aynı yerel ağdaki Windows bilgisayara bağlanır ve GitHub
+üzerinden kendini güncelleyebilir. Masaüstü YEK Panel uygulamasında değişiklik yoktur;
+PC köprüsü ayrı bir araçtır ve mevcut ayarlarınıza dokunmaz.
+
+- **PC bağlantısı:** Windows'ta çalışan YEK Panel PC Köprüsü'ne 6 haneli PIN ile bağlanma. Bilgisayar adı, Windows sürümü, çalışma süresi, yerel IP'ler, CPU/RAM/disk doluluğu, ağ ve bağlantı hızı, pil/sıcaklık ve en çok bellek kullanan 5 işlem canlı görünür.
+- **Keşif ve otomatik bağlanma:** "PC'Yİ BUL" aynı ağdaki köprüyü UDP ile bulur; PC sekmesinde otomatik bağlanma isteğe bağlıdır.
+- **Güvenlik:** PIN zorunlu; aynı IP'den 5 hatalı denemede 1 dakika kilit. Sanal, VPN, Tailscale, VMware ve APIPA adresleri listeden gizlenir.
+- **Otomatik güncelleme:** GitHub Releases içindeki `android-*` sürümleri günlük denetlenir. Yeni APK indirilir; sürüm notları gösterilir ve kurulum Android'in kendi onay ekranıyla yapılır. Sessiz kurulum yoktur.
+- **Arayüz:** Dört sekme (PANEL, PC, ARAÇLAR, AYARLAR); PC kısayolu eklendi.
+- **Yedekleme:** PC bağlantı bilgileri ve güncelleme tercihi JSON yedeğine dahil edildi.
+- Sürüm: 1.2.0 (versionCode 3); Android 8.0–15. APK test imzalıdır.
+
+Android 1.2.0 doğrulaması: PC köprüsü Windows 11'de `/api/ping`, PIN'li `/api/status` ve UDP keşif ile doğrulandı. Telefonda CPU, RAM, disk, ağ, pil ve işlem listesi canlı görüntülendi; hatalı PIN ve 1 dakikalık kilit denendi. Sahte GitHub akışıyla 1.3.0 güncellemesi algılandı, APK indirildi, bilinmeyen kaynak izni verildi ve Android kurulum onayıyla kurulum tamamlandı. Test verileri temizlendi. `assembleDebug` ve `lintDebug` hatasız; lint "No issues found."
+
 ## Android 1.1.0
 
 Android uygulamasına, masaüstü sürümden bağımsız yeni izleme ve tanılama özellikleri eklendi. Windows uygulamasında değişiklik yoktur.
@@ -62,7 +78,8 @@ YEK Panel artık Android'de de var. Aynı depodan indirilebilen APK; Windows sü
 | `YEK-Panel-Setup-2.3.0.exe` | Kurulum sihirbazı (önerilen) |
 | `YEK-Panel-2.3.0-portable.exe` | Kurulum gerektirmeyen taşınabilir sürüm |
 | `YEK-Panel-2.3.0-kaynak.zip` | Açık kaynak kod, dokümanlar ve kurulum betiği |
-| `YEK-Panel-Android-1.1.0.apk` | Android 8.0+ için test imzalı APK (Play Store sürümü yakında) |
+| `YEK-Panel-Android-1.2.0.apk` | Android 8.0+ için test imzalı APK (PC bağlantısı + otomatik güncelleme; Play Store sürümü yakında) |
+| `YEK-Panel-PC-Koprusu-1.0.0.zip` | Windows 10/11 PC köprüsü (PowerShell + başlatıcı + README) |
 | `SHA256SUMS.txt` | SHA-256 doğrulama değerleri |
 
 ## Kurulum

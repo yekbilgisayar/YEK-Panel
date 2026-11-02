@@ -32,7 +32,7 @@ public final class SettingsBackup {
         try {
             root.put("app", APP);
             root.put("schema", SCHEMA);
-            root.put("version", "1.1.0");
+            root.put("version", "1.2.0");
             root.put("exportedAt", System.currentTimeMillis());
 
             SharedPreferences prefs =
@@ -49,6 +49,12 @@ public final class SettingsBackup {
                     prefs.getInt(AppPrefs.K_QUIET_END, AppPrefs.DEFAULT_QUIET_END));
             settings.put("refresh",
                     prefs.getInt(AppPrefs.K_REFRESH, AppPrefs.DEFAULT_REFRESH));
+            settings.put("pcHost", prefs.getString(AppPrefs.K_PC_HOST, ""));
+            settings.put("pcPort",
+                    prefs.getInt(AppPrefs.K_PC_PORT, AppPrefs.DEFAULT_PC_PORT));
+            settings.put("pcPin", prefs.getString(AppPrefs.K_PC_PIN, ""));
+            settings.put("pcAuto", prefs.getBoolean(AppPrefs.K_PC_AUTO, true));
+            settings.put("updateAuto", prefs.getBoolean(AppPrefs.K_UPDATE_AUTO, true));
             root.put("settings", settings);
 
             JSONArray notes = new JSONArray();
@@ -148,6 +154,13 @@ public final class SettingsBackup {
             if (refresh != 2 && refresh != 5 && refresh != 10) {
                 refresh = AppPrefs.DEFAULT_REFRESH;
             }
+            String pcHost = settings.optString("pcHost", "").trim();
+            int pcPort = clamp(settings.optInt("pcPort", AppPrefs.DEFAULT_PC_PORT),
+                    1, 65535);
+            String pcPin = settings.optString("pcPin", "").trim();
+            if (!pcPin.matches("\\d{6}")) {
+                pcPin = "";
+            }
             prefs.edit()
                     .putBoolean(AppPrefs.K_ALERTS, settings.optBoolean("alerts", true))
                     .putInt(AppPrefs.K_LOW, low)
@@ -157,6 +170,12 @@ public final class SettingsBackup {
                     .putInt(AppPrefs.K_QUIET_START, start)
                     .putInt(AppPrefs.K_QUIET_END, end)
                     .putInt(AppPrefs.K_REFRESH, refresh)
+                    .putString(AppPrefs.K_PC_HOST, pcHost)
+                    .putInt(AppPrefs.K_PC_PORT, pcPort)
+                    .putString(AppPrefs.K_PC_PIN, pcPin)
+                    .putBoolean(AppPrefs.K_PC_AUTO, settings.optBoolean("pcAuto", true))
+                    .putBoolean(AppPrefs.K_UPDATE_AUTO,
+                            settings.optBoolean("updateAuto", true))
                     .apply();
         }
 

@@ -22,9 +22,11 @@ import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,6 +48,7 @@ import com.yekbilgisayar.yekpanel.ui.MeterView;
 import com.yekbilgisayar.yekpanel.ui.SparkView;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -78,7 +81,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private static final long ALERT_COOLDOWN = 30L * 60L * 1000L;
     private static final long SERVER_CHECK_INTERVAL = 60L * 1000L;
-    private static final String VERSION = "1.1.0";
+    private static final String VERSION = "1.2.0";
 
     private int BG;
     private int ELEVATED;
@@ -99,13 +102,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private FrameLayout pageHost;
     private ScrollView panelScroll;
+    private ScrollView pcScroll;
     private ScrollView toolsScroll;
     private ScrollView settingsScroll;
     private int currentPage = 0;
 
-    private final LinearLayout[] navItems = new LinearLayout[3];
-    private final ImageView[] navIcons = new ImageView[3];
-    private final TextView[] navLabels = new TextView[3];
+    private final LinearLayout[] navItems = new LinearLayout[4];
+    private final ImageView[] navIcons = new ImageView[4];
+    private final TextView[] navLabels = new TextView[4];
 
     private BatteryRingView batteryRing;
     private TextView stateChip;
@@ -225,6 +229,55 @@ public class MainActivity extends Activity implements SensorEventListener {
     private TextView backupStatus;
     private String pendingRestoreJson = "";
 
+    private EditText pcHostInput;
+    private EditText pcPortInput;
+    private EditText pcPinInput;
+    private Switch pcAutoSwitch;
+    private TextView pcConnectButton;
+    private TextView pcDiscoverButton;
+    private TextView pcStateChip;
+    private TextView pcConnectState;
+    private TextView pcName;
+    private TextView pcMeta;
+    private TextView pcCpuValue;
+    private TextView pcRamValue;
+    private TextView pcNetValue;
+    private TextView pcLinkValue;
+    private TextView pcTempValue;
+    private TextView pcBatteryValue;
+    private TextView pcUpdatedValue;
+    private TextView pcIpValue;
+    private MeterView pcCpuMeter;
+    private MeterView pcRamMeter;
+    private LinearLayout pcDiskList;
+    private LinearLayout pcProcessList;
+    private PcClient.Status pcStatus;
+    private boolean pcConnected = false;
+    private boolean pcConnecting = false;
+    private boolean pcFetching = false;
+    private boolean pcDiscovering = false;
+    private long pcNextRetryAt = 0;
+    private String pcHost = "";
+    private int pcPort = AppPrefs.DEFAULT_PC_PORT;
+    private String pcPin = "";
+    private boolean pcAuto = true;
+
+    private TextView updateVersionValue;
+    private TextView updateStatus;
+    private TextView updateCheckButton;
+    private TextView updateInstallButton;
+    private TextView updateLastValue;
+    private TextView updateNotesButton;
+    private Switch updateAutoSwitch;
+    private ProgressBar updateProgress;
+    private boolean updateChecking = false;
+    private boolean updateDownloading = false;
+    private long updateDownloadId = -1;
+    private UpdateChecker.Release pendingRelease;
+    private String updateMessage = "Henüz kontrol edilmedi";
+    private int updateMessageColor = 0;
+    private boolean updateAuto = true;
+
     private final String[] pingTargets = {"1.1.1.1", "8.8.8.8", "9.9.9.9"};
     private final String[] pingLabels = {"CLOUDFLARE", "GOOGLE", "QUAD9"};
 
@@ -234,8 +287,36 @@ public class MainActivity extends Activity implements SensorEventListener {
             if (currentPage == 0) {
                 refreshPanel();
                 maybeCheckServers();
+            } else if (currentPage == 1) {
+                refreshPc(false);
             }
             handler.postDelayed(this, Math.max(1, refreshSeconds) * 1000L);
+        }
+    };
+
+    private final Runnable updatePoll = new Runnable() {
+        @Override
+        public void run() {
+            if (!updateDownloading || updateDownloadId < 0) {
+                return;
+            }
+            UpdateChecker.Progress progress =
+                    UpdateChecker.progress(MainActivity.this, updateDownloadId);
+            if (progress.status == android.app.DownloadManager.STATUS_SUCCESSFUL) {
+                finishUpdateDownload(true);
+                return;
+            }
+            if (progress.status == android.app.DownloadManager.STATUS_FAILED) {
+                finishUpdateDownload(false);
+                return;
+            }
+            if (progress.percent >= 0) {
+                setUpdateProgress(progress.percent);
+                setUpdateStatus("Güncelleme indiriliyor: %" + progress.percent, ORANGE);
+            } else {
+                setUpdateStatus("Güncelleme indiriliyor…", ORANGE);
+            }
+            handler.postDelayed(this, 900L);
         }
     };
 
@@ -246,6 +327,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         prefs = getSharedPreferences(AppPrefs.PREFS, MODE_PRIVATE);
         loadAlertSettings();
         loadBehaviorSettings();
+        loadPcSettings();
+        loadUpdateSettings();
         noteStore = new NoteStore(this);
         reminderStore = new ReminderStore(this);
         endpointStore = new EndpointStore(this);
@@ -270,6 +353,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         refreshEndpointManagement();
         refreshServerPanel();
         updateNotificationState();
+        updateUpdateUi();
+        maybeAutoCheckUpdate();
     }
 
     @Override
@@ -293,7 +378,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             } catch (NumberFormatException ignored) {
             }
         }
-        return Math.max(0, Math.min(2, page));
+        return Math.max(0, Math.min(3, page));
     }
 
     @Override
@@ -305,14 +390,22 @@ public class MainActivity extends Activity implements SensorEventListener {
             refreshPanel();
             maybeCheckServers();
         } else if (currentPage == 1) {
+            refreshPc(false);
+        } else if (currentPage == 2) {
             restartSensorsIfNeeded();
         }
+        if (updateDownloading) {
+            handler.removeCallbacks(updatePoll);
+            handler.post(updatePoll);
+        }
+        updateUpdateUi();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(ticker);
+        handler.removeCallbacks(updatePoll);
         stopSensors();
     }
 
@@ -336,6 +429,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         GREEN = getColor(R.color.green);
         ORANGE = getColor(R.color.orange);
         RED = getColor(R.color.red);
+        updateMessageColor = MUTED;
     }
 
     private void loadAlertSettings() {
@@ -351,6 +445,26 @@ public class MainActivity extends Activity implements SensorEventListener {
         quietEnd = prefs.getInt(AppPrefs.K_QUIET_END, AppPrefs.DEFAULT_QUIET_END);
         int saved = prefs.getInt(AppPrefs.K_REFRESH, AppPrefs.DEFAULT_REFRESH);
         refreshSeconds = saved == 5 || saved == 10 ? saved : AppPrefs.DEFAULT_REFRESH;
+    }
+
+    private void loadPcSettings() {
+        pcHost = prefs.getString(AppPrefs.K_PC_HOST, "");
+        pcPort = prefs.getInt(AppPrefs.K_PC_PORT, AppPrefs.DEFAULT_PC_PORT);
+        pcPin = prefs.getString(AppPrefs.K_PC_PIN, "");
+        pcAuto = prefs.getBoolean(AppPrefs.K_PC_AUTO, true);
+        if (pcHostInput != null) {
+            pcHostInput.setText(pcHost);
+            pcPortInput.setText(String.valueOf(pcPort));
+            pcPinInput.setText(pcPin);
+            pcAutoSwitch.setChecked(pcAuto);
+        }
+    }
+
+    private void loadUpdateSettings() {
+        updateAuto = prefs.getBoolean(AppPrefs.K_UPDATE_AUTO, true);
+        if (updateAutoSwitch != null) {
+            updateAutoSwitch.setChecked(updateAuto);
+        }
     }
 
     // ---------------------------------------------------------------- Iskelet
@@ -379,9 +493,11 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(pageHost, new LinearLayout.LayoutParams(MATCH, 0, 1f));
 
         panelScroll = buildPanelPage();
+        pcScroll = buildPcPage();
         toolsScroll = buildToolsPage();
         settingsScroll = buildSettingsPage();
         pageHost.addView(panelScroll, new FrameLayout.LayoutParams(MATCH, MATCH));
+        pageHost.addView(pcScroll, new FrameLayout.LayoutParams(MATCH, MATCH));
         pageHost.addView(toolsScroll, new FrameLayout.LayoutParams(MATCH, MATCH));
         pageHost.addView(settingsScroll, new FrameLayout.LayoutParams(MATCH, MATCH));
 
@@ -439,8 +555,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         row.setPadding(dp(8), dp(6), dp(8), dp(8));
         outer.addView(row);
 
-        String[] labels = {"PANEL", "ARAÇLAR", "AYARLAR"};
-        int[] icons = {R.drawable.ic_nav_panel, R.drawable.ic_nav_tools, R.drawable.ic_nav_info};
+        String[] labels = {"PANEL", "PC", "ARAÇLAR", "AYARLAR"};
+        int[] icons = {R.drawable.ic_nav_panel, R.drawable.ic_nav_pc,
+                R.drawable.ic_nav_tools, R.drawable.ic_nav_info};
         for (int i = 0; i < labels.length; i++) {
             LinearLayout item = new LinearLayout(this);
             item.setOrientation(LinearLayout.VERTICAL);
@@ -472,8 +589,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     private void showPage(int index) {
         currentPage = index;
         panelScroll.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
-        toolsScroll.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
-        settingsScroll.setVisibility(index == 2 ? View.VISIBLE : View.GONE);
+        pcScroll.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
+        toolsScroll.setVisibility(index == 2 ? View.VISIBLE : View.GONE);
+        settingsScroll.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
 
         for (int i = 0; i < navItems.length; i++) {
             boolean selected = i == index;
@@ -486,6 +604,18 @@ public class MainActivity extends Activity implements SensorEventListener {
             refreshPanel();
             maybeCheckServers();
         } else if (index == 1) {
+            if (pcHost.isEmpty() || pcPin.isEmpty()) {
+                setPcStatus("PC köprüsünü çalıştırıp IP ve PIN girin", MUTED);
+            } else if (!pcConnected) {
+                if (pcAuto) {
+                    connectPc(false);
+                } else {
+                    setPcStatus("Bağlanmak için BAĞLAN düğmesine dokunun", MUTED);
+                }
+            } else {
+                refreshPc(false);
+            }
+        } else if (index == 2) {
             refreshToolsNetwork();
             refreshNotes();
             refreshReminders();
@@ -493,8 +623,9 @@ public class MainActivity extends Activity implements SensorEventListener {
             restartSensorsIfNeeded();
         } else {
             updateNotificationState();
+            updateUpdateUi();
         }
-        if (index != 1) {
+        if (index != 2) {
             stopSensors();
         }
     }
@@ -502,10 +633,17 @@ public class MainActivity extends Activity implements SensorEventListener {
     private void refreshAll() {
         refreshPanel();
         if (currentPage == 1) {
+            refreshPc(true);
+        }
+        if (currentPage == 2) {
             refreshToolsNetwork();
             refreshNotes();
             refreshReminders();
             refreshEndpointManagement();
+        }
+        if (currentPage == 3) {
+            updateNotificationState();
+            updateUpdateUi();
         }
         updateNotificationState();
         Toast.makeText(this, "Veriler güncellendi", Toast.LENGTH_SHORT).show();
@@ -874,6 +1012,594 @@ public class MainActivity extends Activity implements SensorEventListener {
                     "Cihaz ısınıyor",
                     String.format(Locale.getDefault(),
                             "Pil sıcaklığı %.1f °C. Ağır işlemleri durdurun.", st.batteryTempC));
+        }
+    }
+
+    // ---------------------------------------------------------------- PC
+
+    private ScrollView buildPcPage() {
+        ScrollView scroll = pageScroll();
+        LinearLayout c = content(scroll);
+
+        pcStateChip = chip(pcConnected ? "BAĞLI" : "BAĞLI DEĞİL", pcConnected ? GREEN : MUTED);
+        c.addView(sectionHeader("PC BAĞLANTISI", pcStateChip));
+
+        LinearLayout connectCard = card();
+        connectCard.addView(cardHeader("PC KÖPRÜSÜ", chip("LAN · PIN", ACCENT)));
+        TextView connectDesc = text("Windows bilgisayardaki YEK Panel PC Köprüsü'nü "
+                + "çalıştırın; ekranda görünen IP adresi ve 6 haneli PIN ile bağlanın. "
+                + "Bağlantı yalnızca yerel ağda çalışır.", 11, MUTED, false);
+        connectDesc.setPadding(0, dp(8), 0, dp(4));
+        connectDesc.setLineSpacing(dp(3), 1f);
+        connectCard.addView(connectDesc);
+
+        connectCard.addView(pcInputLabel("BİLGİSAYAR IP ADRESİ"));
+        pcHostInput = input("192.168.1.20", false);
+        pcHostInput.setText(pcHost);
+        pcHostInput.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_URI);
+        connectCard.addView(pcHostInput);
+
+        LinearLayout portPin = new LinearLayout(this);
+        portPin.setOrientation(LinearLayout.HORIZONTAL);
+        portPin.setPadding(0, dp(9), 0, 0);
+        LinearLayout portBox = new LinearLayout(this);
+        portBox.setOrientation(LinearLayout.VERTICAL);
+        portBox.addView(pcInputLabel("PORT"));
+        pcPortInput = input("8787", false);
+        pcPortInput.setText(String.valueOf(pcPort));
+        pcPortInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        portBox.addView(pcPortInput);
+        portPin.addView(portBox, new LinearLayout.LayoutParams(0, WRAP, 0.42f));
+
+        LinearLayout pinBox = new LinearLayout(this);
+        pinBox.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams pinBoxLp = new LinearLayout.LayoutParams(0, WRAP, 0.58f);
+        pinBoxLp.leftMargin = dp(8);
+        pinBox.addView(pcInputLabel("6 HANELİ PIN"));
+        pcPinInput = input("6 hane", false);
+        pcPinInput.setText(pcPin);
+        pcPinInput.setInputType(InputType.TYPE_CLASS_NUMBER
+                | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        pinBox.addView(pcPinInput);
+        portPin.addView(pinBox, pinBoxLp);
+        connectCard.addView(portPin);
+
+        LinearLayout connectRow = new LinearLayout(this);
+        connectRow.setOrientation(LinearLayout.HORIZONTAL);
+        connectRow.setPadding(0, dp(10), 0, 0);
+        pcConnectButton = button("BAĞLAN", true);
+        pcConnectButton.setContentDescription("Bilgisayara bağlan");
+        pcConnectButton.setOnClickListener(v -> connectPc(true));
+        pcDiscoverButton = button("PC'Yİ BUL", false);
+        pcDiscoverButton.setContentDescription("Yerel ağda bilgisayar ara");
+        pcDiscoverButton.setOnClickListener(v -> discoverPc());
+        connectRow.addView(pcConnectButton, new LinearLayout.LayoutParams(0, WRAP, 1.3f));
+        LinearLayout.LayoutParams discoverLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        discoverLp.leftMargin = dp(6);
+        connectRow.addView(pcDiscoverButton, discoverLp);
+        connectCard.addView(connectRow);
+
+        LinearLayout autoRow = new LinearLayout(this);
+        autoRow.setOrientation(LinearLayout.HORIZONTAL);
+        autoRow.setGravity(Gravity.CENTER_VERTICAL);
+        autoRow.setPadding(0, dp(11), 0, 0);
+        TextView autoLabel = text("PC sekmesinde otomatik bağlan", 12, TEXT, false);
+        autoRow.addView(autoLabel, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        pcAutoSwitch = new Switch(this);
+        pcAutoSwitch.setShowText(false);
+        pcAutoSwitch.setChecked(pcAuto);
+        pcAutoSwitch.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        pcAutoSwitch.setTrackTintList(ColorStateList.valueOf(Color.parseColor("#1E2A44")));
+        pcAutoSwitch.setContentDescription("PC sekmesinde otomatik bağlan");
+        pcAutoSwitch.setOnCheckedChangeListener((button, checked) -> {
+            pcAuto = checked;
+            prefs.edit().putBoolean(AppPrefs.K_PC_AUTO, checked).apply();
+        });
+        autoRow.addView(pcAutoSwitch);
+        connectCard.addView(autoRow);
+
+        pcConnectState = text("", 10, MUTED, false);
+        pcConnectState.setPadding(0, dp(9), 0, 0);
+        pcConnectState.setLineSpacing(dp(2), 1f);
+        connectCard.addView(pcConnectState);
+        setPcStatus(pcConnected ? "Bağlı" : "PC köprüsünü çalıştırıp IP ve PIN girin",
+                pcConnected ? GREEN : MUTED);
+        addCard(c, connectCard);
+
+        LinearLayout liveCard = card();
+        liveCard.addView(cardHeader("CANLI DURUM", chip("YEREL AĞ", ACCENT)));
+        pcName = valueText("—", 22, TEXT, true);
+        pcName.setPadding(0, dp(8), 0, 0);
+        liveCard.addView(pcName);
+        pcMeta = text("Bağlantı bekleniyor", 11, MUTED, false);
+        pcMeta.setPadding(0, dp(3), 0, dp(2));
+        liveCard.addView(pcMeta);
+
+        pcIpValue = rowValue();
+        addInfoRow(liveCard, "IP adresleri", pcIpValue);
+        pcIpValue.setText("—");
+
+        pcCpuMeter = new MeterView(this);
+        pcCpuValue = valueText("—", 15, TEXT, true);
+        liveCard.addView(pcMetricBlock("CPU", pcCpuValue, pcCpuMeter));
+
+        pcRamMeter = new MeterView(this);
+        pcRamValue = valueText("—", 12, TEXT, false);
+        liveCard.addView(pcMetricBlock("RAM", pcRamValue, pcRamMeter));
+
+        pcNetValue = rowValue();
+        addInfoRow(liveCard, "Ağ trafiği", pcNetValue);
+        pcNetValue.setText("—");
+        pcLinkValue = rowValue();
+        addInfoRow(liveCard, "Bağlantı hızı", pcLinkValue);
+        pcLinkValue.setText("—");
+        pcTempValue = rowValue();
+        addInfoRow(liveCard, "Sıcaklık", pcTempValue);
+        pcTempValue.setText("—");
+        pcBatteryValue = rowValue();
+        addInfoRow(liveCard, "Pil", pcBatteryValue);
+        pcBatteryValue.setText("—");
+
+        TextView diskTitle = labelText("DİSKLER");
+        diskTitle.setPadding(0, dp(12), 0, dp(2));
+        liveCard.addView(diskTitle);
+        pcDiskList = new LinearLayout(this);
+        pcDiskList.setOrientation(LinearLayout.VERTICAL);
+        liveCard.addView(pcDiskList);
+        TextView noDisk = text("Bağlanınca disk kullanımı görünür.", 10, MUTED, false);
+        pcDiskList.addView(noDisk);
+
+        pcUpdatedValue = text("Henüz veri alınmadı", 10, MUTED, false);
+        pcUpdatedValue.setPadding(0, dp(10), 0, 0);
+        liveCard.addView(pcUpdatedValue);
+        addCard(c, liveCard);
+
+        LinearLayout processCard = card();
+        processCard.addView(cardHeader("EN YOĞUN İŞLEMLER", null));
+        pcProcessList = new LinearLayout(this);
+        pcProcessList.setOrientation(LinearLayout.VERTICAL);
+        TextView noProcess = text("Bağlanınca belleği en çok kullanan 5 işlem listelenir.",
+                10, MUTED, false);
+        noProcess.setPadding(0, dp(8), 0, 0);
+        pcProcessList.addView(noProcess);
+        processCard.addView(pcProcessList);
+        addCard(c, processCard);
+
+        LinearLayout helpCard = card();
+        helpCard.addView(cardHeader("NASIL ÇALIŞIR?", null));
+        String[] steps = {
+                "1. Windows'ta pc-bridge klasöründeki YekPanelBridge.ps1 dosyasını çalıştırın.",
+                "2. Ekranda görünen IP adresini ve 6 haneli PIN'i bu sayfaya girin.",
+                "3. Telefon ile bilgisayar aynı Wi-Fi ağında olmalıdır.",
+                "4. PC Köprüsü yerel ağ için ayrı bir yardımcıdır; masaüstü YEK Panel "
+                        + "uygulamasının ayarlarını değiştirmez.",
+                "5. Veriler internete gönderilmez; PIN yalnızca yerel ağda doğrulanır."
+        };
+        for (String step : steps) {
+            TextView item = text(step, 11, MUTED, false);
+            item.setPadding(0, dp(7), 0, 0);
+            item.setLineSpacing(dp(3), 1f);
+            helpCard.addView(item);
+        }
+        addCard(c, helpCard);
+
+        return scroll;
+    }
+
+    private TextView pcInputLabel(String value) {
+        TextView label = labelText(value);
+        label.setPadding(0, dp(10), 0, dp(5));
+        return label;
+    }
+
+    private View pcMetricBlock(String label, TextView value, MeterView meter) {
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setPadding(0, dp(11), 0, 0);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(labelText(label), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        head.addView(value);
+        block.addView(head);
+        LinearLayout.LayoutParams meterLp = new LinearLayout.LayoutParams(MATCH, dp(6));
+        meterLp.topMargin = dp(6);
+        block.addView(meter, meterLp);
+        return block;
+    }
+
+    private void readPcInputs() {
+        if (pcHostInput != null) {
+            pcHost = PcClient.normalizeHost(pcHostInput.getText().toString());
+        }
+        if (pcPortInput != null) {
+            try {
+                pcPort = Integer.parseInt(pcPortInput.getText().toString().trim());
+            } catch (NumberFormatException ignored) {
+                pcPort = AppPrefs.DEFAULT_PC_PORT;
+            }
+        }
+        if (pcPort < 1 || pcPort > 65535) {
+            pcPort = AppPrefs.DEFAULT_PC_PORT;
+        }
+        if (pcPinInput != null) {
+            pcPin = pcPinInput.getText().toString().trim();
+        }
+    }
+
+    private void savePcConfig() {
+        prefs.edit()
+                .putString(AppPrefs.K_PC_HOST, pcHost)
+                .putInt(AppPrefs.K_PC_PORT, pcPort)
+                .putString(AppPrefs.K_PC_PIN, pcPin)
+                .putBoolean(AppPrefs.K_PC_AUTO, pcAuto)
+                .apply();
+    }
+
+    private void connectPc(boolean userAction) {
+        if (pcConnecting || pcFetching) {
+            return;
+        }
+        readPcInputs();
+        savePcConfig();
+        if (pcHost.isEmpty()) {
+            setPcState("BAĞLI DEĞİL", ORANGE);
+            setPcStatus("Bilgisayar IP adresi girin", ORANGE);
+            if (userAction) {
+                Toast.makeText(this, "Bilgisayar IP adresi gerekli", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        if (!pcPin.matches("\\d{6}")) {
+            setPcState("PIN GEREKLİ", ORANGE);
+            setPcStatus("PC Köprüsü ekranındaki 6 haneli PIN'i girin", ORANGE);
+            if (userAction) {
+                Toast.makeText(this, "6 haneli PIN girin", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        final String host = pcHost;
+        final int port = pcPort;
+        final String pin = pcPin;
+        pcConnecting = true;
+        pcFetching = true;
+        setPcState("BAĞLANIYOR", ORANGE);
+        setPcStatus("Bağlantı kuruluyor: " + host + ":" + port, MUTED);
+        if (pcConnectButton != null) {
+            pcConnectButton.setEnabled(false);
+        }
+        new Thread(() -> {
+            PcClient.Result result = PcClient.fetch(host, port, pin);
+            handler.post(() -> {
+                pcConnecting = false;
+                pcFetching = false;
+                if (pcConnectButton != null) {
+                    pcConnectButton.setEnabled(true);
+                }
+                if (result.status != null) {
+                    pcConnected = true;
+                    pcStatus = result.status;
+                    pcNextRetryAt = 0;
+                    applyPcStatus();
+                    setPcState("BAĞLI", GREEN);
+                    setPcStatus("Bağlı · " + result.status.name + " · " + host + ":" + port,
+                            GREEN);
+                    if (userAction) {
+                        Toast.makeText(this, "PC bağlantısı kuruldu", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    pcConnected = false;
+                    pcNextRetryAt = result.unauthorized
+                            ? System.currentTimeMillis() + 60_000L
+                            : System.currentTimeMillis() + 5_000L;
+                    setPcState(result.unauthorized ? "PIN HATALI" : "BAĞLI DEĞİL",
+                            result.unauthorized ? ORANGE : RED);
+                    setPcStatus(result.error, result.unauthorized ? ORANGE : RED);
+                    if (userAction) {
+                        Toast.makeText(MainActivity.this, result.error, Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+        }, "yek-pc-connect").start();
+    }
+
+    private void refreshPc(boolean userAction) {
+        if (pcConnecting || pcFetching) {
+            return;
+        }
+        readPcInputs();
+        if (pcHost.isEmpty() || !pcPin.matches("\\d{6}")) {
+            if (userAction) {
+                connectPc(true);
+            }
+            return;
+        }
+        if (!pcConnected) {
+            if (!userAction && !pcAuto) {
+                return;
+            }
+            if (!userAction && System.currentTimeMillis() < pcNextRetryAt) {
+                return;
+            }
+            connectPc(userAction);
+            return;
+        }
+        final String host = pcHost;
+        final int port = pcPort;
+        final String pin = pcPin;
+        pcFetching = true;
+        new Thread(() -> {
+            PcClient.Result result = PcClient.fetch(host, port, pin);
+            handler.post(() -> {
+                pcFetching = false;
+                if (result.status != null) {
+                    pcConnected = true;
+                    pcStatus = result.status;
+                    pcNextRetryAt = 0;
+                    applyPcStatus();
+                    setPcState("BAĞLI", GREEN);
+                    setPcStatus("Bağlı · " + result.status.name + " · " + host + ":" + port,
+                            GREEN);
+                } else {
+                    pcConnected = false;
+                    pcNextRetryAt = result.unauthorized
+                            ? System.currentTimeMillis() + 60_000L
+                            : System.currentTimeMillis() + 5_000L;
+                    setPcState(result.unauthorized ? "PIN HATALI" : "BAĞLANTI YOK",
+                            result.unauthorized ? ORANGE : RED);
+                    setPcStatus(result.error, result.unauthorized ? ORANGE : RED);
+                    if (userAction) {
+                        Toast.makeText(MainActivity.this, result.error, Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+        }, "yek-pc-refresh").start();
+    }
+
+    private void discoverPc() {
+        if (pcDiscovering) {
+            return;
+        }
+        readPcInputs();
+        pcDiscovering = true;
+        setPcState("ARANIYOR", ORANGE);
+        setPcStatus("Yerel ağda PC Köprüsü aranıyor…", MUTED);
+        if (pcDiscoverButton != null) {
+            pcDiscoverButton.setEnabled(false);
+        }
+        new Thread(() -> {
+            PcClient.Found found = PcClient.discover(2600);
+            handler.post(() -> {
+                pcDiscovering = false;
+                if (pcDiscoverButton != null) {
+                    pcDiscoverButton.setEnabled(true);
+                }
+                if (found == null) {
+                    setPcState("BAĞLI DEĞİL", MUTED);
+                    setPcStatus("PC bulunamadı. IP adresini elle girin; Windows güvenlik "
+                            + "duvarı yerel ağ iznini engelliyor olabilir.", ORANGE);
+                    Toast.makeText(MainActivity.this, "PC bulunamadı",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                pcHost = found.host;
+                pcPort = found.port;
+                if (pcHostInput != null) {
+                    pcHostInput.setText(pcHost);
+                    pcPortInput.setText(String.valueOf(pcPort));
+                }
+                savePcConfig();
+                setPcState("BULUNDU", GREEN);
+                setPcStatus("Bulundu: " + found.name + " · " + pcHost + ":" + pcPort
+                        + " · PIN'i girin", GREEN);
+                Toast.makeText(MainActivity.this,
+                        "PC bulundu: " + found.name, Toast.LENGTH_SHORT).show();
+                if (pcPinInput != null) {
+                    pcPinInput.requestFocus();
+                }
+            });
+        }, "yek-pc-discover").start();
+    }
+
+    private void applyPcStatus() {
+        PcClient.Status status = pcStatus;
+        if (status == null) {
+            return;
+        }
+        if (pcName != null) {
+            pcName.setText(status.name == null || status.name.isEmpty() ? "PC" : status.name);
+        }
+        if (pcMeta != null) {
+            String os = status.os == null || status.os.isEmpty() ? "Windows" : status.os;
+            pcMeta.setText(os + " · " + PcClient.uptime(status.uptimeSec));
+        }
+        if (pcIpValue != null) {
+            pcIpValue.setText(status.ips.isEmpty() ? "—" : joinText(status.ips));
+        }
+        if (pcCpuValue != null) {
+            pcCpuValue.setText(String.format(Locale.getDefault(), "%.1f %%", status.cpuPercent));
+        }
+        if (pcCpuMeter != null) {
+            pcCpuMeter.setProgress((int) Math.round(status.cpuPercent),
+                    loadColor(status.cpuPercent));
+        }
+        if (pcRamValue != null) {
+            pcRamValue.setText(PcClient.bytes(status.ramUsed) + " / "
+                    + PcClient.bytes(status.ramTotal) + " · %" + status.ramPercent);
+        }
+        if (pcRamMeter != null) {
+            pcRamMeter.setProgress(status.ramPercent, loadColor(status.ramPercent));
+        }
+        if (pcNetValue != null) {
+            pcNetValue.setText("↓ " + PcClient.rate(status.netDown)
+                    + " · ↑ " + PcClient.rate(status.netUp));
+        }
+        if (pcLinkValue != null) {
+            pcLinkValue.setText(status.linkMbps > 0
+                    ? status.linkMbps + " Mbps" : "—");
+        }
+        if (pcTempValue != null) {
+            pcTempValue.setText(Double.isNaN(status.tempC) ? "—"
+                    : String.format(Locale.getDefault(), "%.1f °C", status.tempC));
+        }
+        if (pcBatteryValue != null) {
+            pcBatteryValue.setText(status.batteryPercent < 0 ? "Masaüstü (pil yok)"
+                    : "%" + status.batteryPercent + (status.batteryCharging
+                    ? " · şarj oluyor" : " · pil"));
+        }
+        if (pcUpdatedValue != null) {
+            String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                    .format(new Date(status.receivedAt));
+            pcUpdatedValue.setText("Son güncelleme: " + time
+                    + " · köprü v" + status.version);
+        }
+        if (pcDiskList != null) {
+            pcDiskList.removeAllViews();
+            if (status.disks.isEmpty()) {
+                TextView empty = text("Disk bilgisi yok.", 10, MUTED, false);
+                empty.setPadding(0, dp(6), 0, 0);
+                pcDiskList.addView(empty);
+            } else {
+                for (PcClient.Disk disk : status.disks) {
+                    pcDiskList.addView(pcDiskRow(disk));
+                }
+            }
+        }
+        if (pcProcessList != null) {
+            pcProcessList.removeAllViews();
+            if (status.processes.isEmpty()) {
+                TextView empty = text("İşlem bilgisi yok.", 10, MUTED, false);
+                empty.setPadding(0, dp(6), 0, 0);
+                pcProcessList.addView(empty);
+            } else {
+                for (PcClient.ProcessInfo process : status.processes) {
+                    pcProcessList.addView(pcProcessRow(process));
+                }
+            }
+        }
+    }
+
+    private View pcDiskRow(PcClient.Disk disk) {
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setPadding(0, dp(7), 0, 0);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = text(disk.name, 12, TEXT, true);
+        head.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        long used = Math.max(0, disk.total - disk.free);
+        TextView value = text(PcClient.bytes(used) + " / " + PcClient.bytes(disk.total)
+                + " · %" + disk.percent, 10, MUTED, false);
+        head.addView(value);
+        block.addView(head);
+        MeterView meter = new MeterView(this);
+        meter.setProgress(disk.percent, loadColor(disk.percent));
+        LinearLayout.LayoutParams meterLp = new LinearLayout.LayoutParams(MATCH, dp(5));
+        meterLp.topMargin = dp(5);
+        block.addView(meter, meterLp);
+        return block;
+    }
+
+    private View pcProcessRow(PcClient.ProcessInfo process) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(8), 0, dp(8));
+        TextView name = text(process.name, 12, TEXT, false);
+        name.setMaxLines(1);
+        row.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        TextView meta = text(String.format(Locale.getDefault(), "%.0f MB · PID %d",
+                process.memMb, process.pid), 10, MUTED, false);
+        row.addView(meta);
+        return row;
+    }
+
+    private int loadColor(double percent) {
+        if (percent >= 85) {
+            return RED;
+        }
+        if (percent >= 60) {
+            return ORANGE;
+        }
+        return GREEN;
+    }
+
+    private String joinText(List<String> values) {
+        StringBuilder builder = new StringBuilder();
+        for (String value : values) {
+            if (builder.length() > 0) {
+                builder.append(", ");
+            }
+            builder.append(value);
+        }
+        return builder.toString();
+    }
+
+    private void setPcState(String label, int color) {
+        if (pcStateChip != null) {
+            applyChip(pcStateChip, label, color);
+        }
+    }
+
+    private void setPcStatus(String message, int color) {
+        if (pcConnectState != null) {
+            pcConnectState.setText(message);
+            pcConnectState.setTextColor(color);
+        }
+    }
+
+    private void resetPcUi() {
+        setPcState("BAĞLI DEĞİL", MUTED);
+        setPcStatus("PC köprüsünü çalıştırıp IP ve PIN girin", MUTED);
+        if (pcName != null) {
+            pcName.setText("—");
+        }
+        if (pcMeta != null) {
+            pcMeta.setText("Bağlantı bekleniyor");
+        }
+        if (pcIpValue != null) {
+            pcIpValue.setText("—");
+        }
+        if (pcCpuValue != null) {
+            pcCpuValue.setText("—");
+        }
+        if (pcCpuMeter != null) {
+            pcCpuMeter.setProgress(0, MUTED);
+        }
+        if (pcRamValue != null) {
+            pcRamValue.setText("—");
+        }
+        if (pcRamMeter != null) {
+            pcRamMeter.setProgress(0, MUTED);
+        }
+        if (pcNetValue != null) {
+            pcNetValue.setText("—");
+        }
+        if (pcLinkValue != null) {
+            pcLinkValue.setText("—");
+        }
+        if (pcTempValue != null) {
+            pcTempValue.setText("—");
+        }
+        if (pcBatteryValue != null) {
+            pcBatteryValue.setText("—");
+        }
+        if (pcUpdatedValue != null) {
+            pcUpdatedValue.setText("Henüz veri alınmadı");
+        }
+        if (pcDiskList != null) {
+            pcDiskList.removeAllViews();
+            TextView empty = text("Bağlanınca disk kullanımı görünür.", 10, MUTED, false);
+            pcDiskList.addView(empty);
+        }
+        if (pcProcessList != null) {
+            pcProcessList.removeAllViews();
+            TextView empty = text("Bağlanınca belleği en çok kullanan 5 işlem listelenir.",
+                    10, MUTED, false);
+            empty.setPadding(0, dp(8), 0, 0);
+            pcProcessList.addView(empty);
         }
     }
 
@@ -2310,6 +3036,88 @@ public class MainActivity extends Activity implements SensorEventListener {
         dataCard.addView(backupStatus);
         addCard(c, dataCard);
 
+        LinearLayout updateCard = card();
+        updateCard.addView(cardHeader("GÜNCELLEME", chip("GITHUB", ACCENT)));
+        TextView updateDesc = text("Android sürümü GitHub Releases üzerinden denetlenir. "
+                + "Yeni sürüm bulunduğunda APK indirilir ve kurulum için Android onayı "
+                + "istenir; sessiz kurulum yapılmaz.", 11, MUTED, false);
+        updateDesc.setPadding(0, dp(8), 0, dp(3));
+        updateDesc.setLineSpacing(dp(3), 1f);
+        updateCard.addView(updateDesc);
+
+        updateVersionValue = rowValue();
+        addInfoRow(updateCard, "Yüklü sürüm", updateVersionValue);
+        updateVersionValue.setText(VERSION);
+        updateLastValue = rowValue();
+        addInfoRow(updateCard, "Son kontrol", updateLastValue);
+        updateLastValue.setText("—");
+
+        updateStatus = text("", 10, MUTED, false);
+        updateStatus.setPadding(0, dp(11), 0, 0);
+        updateStatus.setLineSpacing(dp(3), 1f);
+        updateCard.addView(updateStatus);
+
+        updateProgress = new ProgressBar(this, null,
+                android.R.attr.progressBarStyleHorizontal);
+        updateProgress.setMax(100);
+        updateProgress.setProgress(0);
+        updateProgress.setProgressTintList(ColorStateList.valueOf(ACCENT));
+        updateProgress.setProgressBackgroundTintList(
+                ColorStateList.valueOf(Color.parseColor("#1B2740")));
+        updateProgress.setVisibility(View.GONE);
+        LinearLayout.LayoutParams updateProgressLp =
+                new LinearLayout.LayoutParams(MATCH, dp(6));
+        updateProgressLp.topMargin = dp(8);
+        updateCard.addView(updateProgress, updateProgressLp);
+
+        LinearLayout updateButtons = new LinearLayout(this);
+        updateButtons.setOrientation(LinearLayout.HORIZONTAL);
+        updateButtons.setPadding(0, dp(10), 0, 0);
+        updateCheckButton = button("GÜNCELLEME KONTROL ET", true);
+        updateCheckButton.setContentDescription("Güncellemeyi kontrol et");
+        updateCheckButton.setOnClickListener(v -> checkForUpdates(true));
+        updateInstallButton = button("KUR", false);
+        updateInstallButton.setContentDescription("İndirilen güncellemeyi kur");
+        updateInstallButton.setVisibility(View.GONE);
+        updateInstallButton.setOnClickListener(v -> installUpdate());
+        updateButtons.addView(updateCheckButton, new LinearLayout.LayoutParams(0, WRAP, 1.6f));
+        LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(0, WRAP, 0.8f);
+        installLp.leftMargin = dp(6);
+        updateButtons.addView(updateInstallButton, installLp);
+        updateCard.addView(updateButtons);
+
+        updateNotesButton = actionChip("SÜRÜM NOTLARINI GÖR", ACCENT);
+        LinearLayout.LayoutParams notesLp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        notesLp.topMargin = dp(10);
+        updateNotesButton.setVisibility(View.GONE);
+        updateNotesButton.setOnClickListener(v -> {
+            if (pendingRelease != null && !pendingRelease.htmlUrl.isEmpty()) {
+                openUrl(pendingRelease.htmlUrl);
+            }
+        });
+        updateCard.addView(updateNotesButton, notesLp);
+
+        LinearLayout updateAutoRow = new LinearLayout(this);
+        updateAutoRow.setOrientation(LinearLayout.HORIZONTAL);
+        updateAutoRow.setGravity(Gravity.CENTER_VERTICAL);
+        updateAutoRow.setPadding(0, dp(11), 0, 0);
+        TextView updateAutoLabel = text("Açılışta güncelleme kontrol et", 12, TEXT, false);
+        updateAutoRow.addView(updateAutoLabel, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        updateAutoSwitch = new Switch(this);
+        updateAutoSwitch.setShowText(false);
+        updateAutoSwitch.setChecked(updateAuto);
+        updateAutoSwitch.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        updateAutoSwitch.setTrackTintList(ColorStateList.valueOf(Color.parseColor("#1E2A44")));
+        updateAutoSwitch.setContentDescription("Açılışta güncelleme kontrol et");
+        updateAutoSwitch.setOnCheckedChangeListener((button, checked) -> {
+            updateAuto = checked;
+            prefs.edit().putBoolean(AppPrefs.K_UPDATE_AUTO, checked).apply();
+        });
+        updateAutoRow.addView(updateAutoSwitch);
+        updateCard.addView(updateAutoRow);
+
+        addCard(c, updateCard);
+
         LinearLayout deviceCard = card();
         deviceCard.addView(cardHeader("CİHAZ BİLGİSİ", null));
         DeviceStats.Snapshot info = DeviceStats.read(this);
@@ -2544,12 +3352,19 @@ public class MainActivity extends Activity implements SensorEventListener {
             SettingsBackup.Summary summary = SettingsBackup.importData(this, pendingRestoreJson);
             loadAlertSettings();
             loadBehaviorSettings();
+            loadPcSettings();
+            loadUpdateSettings();
+            pcConnected = false;
+            pcStatus = null;
+            pcNextRetryAt = 0;
+            resetPcUi();
             rebuildSettingsPage();
             refreshNotes();
             refreshReminders();
             refreshEndpointManagement();
             refreshServerPanel();
             refreshPanel();
+            updateUpdateUi();
             Toast.makeText(this, "Geri yüklendi: " + summary.notes + " not · "
                     + summary.reminders + " hatırlatıcı · " + summary.endpoints + " sunucu",
                     Toast.LENGTH_LONG).show();
@@ -2725,6 +3540,241 @@ public class MainActivity extends Activity implements SensorEventListener {
                     ? "Yedek dışa aktarılamadı" : "Dışa aktarma başarısız",
                     Toast.LENGTH_LONG).show();
         }
+    }
+
+    // ---------------------------------------------------------------- Güncelleme
+
+    private void maybeAutoCheckUpdate() {
+        if (!updateAuto) {
+            return;
+        }
+        long last = prefs.getLong(AppPrefs.K_UPDATE_LAST, 0);
+        if (last > 0 && System.currentTimeMillis() - last < AppPrefs.UPDATE_INTERVAL) {
+            return;
+        }
+        handler.postDelayed(() -> checkForUpdates(false), 1800L);
+    }
+
+    private void checkForUpdates(boolean userAction) {
+        if (updateChecking) {
+            return;
+        }
+        if (!userAction) {
+            long last = prefs.getLong(AppPrefs.K_UPDATE_LAST, 0);
+            if (last > 0 && System.currentTimeMillis() - last < AppPrefs.UPDATE_INTERVAL) {
+                updateUpdateUi();
+                return;
+            }
+        }
+        updateChecking = true;
+        if (updateCheckButton != null) {
+            updateCheckButton.setEnabled(false);
+            updateCheckButton.setText("KONTROL EDİLİYOR…");
+        }
+        setUpdateStatus("Güncelleme kontrol ediliyor…", ORANGE);
+        updateUpdateUi();
+        new Thread(() -> {
+            UpdateChecker.Release release = null;
+            String error = "";
+            try {
+                release = UpdateChecker.check(MainActivity.this);
+            } catch (Exception exception) {
+                error = shortError(exception);
+            }
+            final UpdateChecker.Release found = release;
+            final String failure = error;
+            handler.post(() -> {
+                updateChecking = false;
+                if (updateCheckButton != null) {
+                    updateCheckButton.setEnabled(true);
+                    updateCheckButton.setText("GÜNCELLEME KONTROL ET");
+                }
+                if (!failure.isEmpty()) {
+                    setUpdateStatus("Kontrol edilemedi: " + failure, RED);
+                    if (userAction) {
+                        Toast.makeText(MainActivity.this,
+                                "Güncelleme kontrol edilemedi", Toast.LENGTH_LONG).show();
+                    }
+                    updateUpdateUi();
+                    return;
+                }
+                prefs.edit().putLong(AppPrefs.K_UPDATE_LAST,
+                        System.currentTimeMillis()).apply();
+                if (found == null) {
+                    setUpdateStatus("En son sürümdesiniz · v" + VERSION, GREEN);
+                    if (userAction) {
+                        Toast.makeText(MainActivity.this, "Uygulama güncel",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                    updateUpdateUi();
+                    return;
+                }
+                pendingRelease = found;
+                setUpdateStatus("Yeni sürüm hazır: v" + found.version, ACCENT);
+                updateUpdateUi();
+                showUpdateDialog(found);
+            });
+        }, "yek-update-check").start();
+    }
+
+    private void showUpdateDialog(UpdateChecker.Release release) {
+        StringBuilder message = new StringBuilder();
+        message.append(release.notes);
+        message.append("\n\nYüklü sürüm: v").append(VERSION);
+        if (release.apkSize > 0) {
+            message.append("\nAPK boyutu: ").append(PcClient.bytes(release.apkSize));
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle("YEK Panel Android " + release.version)
+                .setMessage(message.toString())
+                .setPositiveButton("İNDİR VE KUR",
+                        (dialog, which) -> startUpdateDownload(release))
+                .setNegativeButton("DAHA SONRA", null);
+        if (release.htmlUrl != null && !release.htmlUrl.isEmpty()) {
+            builder.setNeutralButton("GITHUB'DA AÇ",
+                    (dialog, which) -> openUrl(release.htmlUrl));
+        }
+        builder.show();
+    }
+
+    private void startUpdateDownload(UpdateChecker.Release release) {
+        if (release == null) {
+            return;
+        }
+        try {
+            long id = UpdateChecker.download(this, release);
+            if (id < 0) {
+                setUpdateStatus("İndirme başlatılamadı", RED);
+                Toast.makeText(this, "İndirme başlatılamadı", Toast.LENGTH_LONG).show();
+                return;
+            }
+            updateDownloadId = id;
+            updateDownloading = true;
+            setUpdateProgress(0);
+            if (updateInstallButton != null) {
+                updateInstallButton.setVisibility(View.GONE);
+            }
+            setUpdateStatus("Güncelleme indiriliyor…", ORANGE);
+            updateUpdateUi();
+            handler.removeCallbacks(updatePoll);
+            handler.post(updatePoll);
+            Toast.makeText(this, "Güncelleme indiriliyor", Toast.LENGTH_SHORT).show();
+        } catch (Exception exception) {
+            setUpdateStatus("İndirme başlatılamadı: " + shortError(exception), RED);
+            updateUpdateUi();
+        }
+    }
+
+    private void finishUpdateDownload(boolean success) {
+        updateDownloading = false;
+        handler.removeCallbacks(updatePoll);
+        if (!success) {
+            setUpdateStatus("Güncelleme indirilemedi · tekrar deneyin", RED);
+            updateUpdateUi();
+            Toast.makeText(this, "Güncelleme indirilemedi", Toast.LENGTH_LONG).show();
+            return;
+        }
+        setUpdateProgress(100);
+        setUpdateStatus("Güncelleme indirildi · KUR düğmesine dokunun", GREEN);
+        updateUpdateUi();
+        if (updateInstallButton != null) {
+            updateInstallButton.setVisibility(View.VISIBLE);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Güncelleme indirildi")
+                .setMessage("YEK Panel" + (pendingRelease == null ? ""
+                        : " v" + pendingRelease.version)
+                        + " kurulmaya hazır. Android kurulum onayı istenecek.")
+                .setPositiveButton("ŞİMDİ KUR", (dialog, which) -> installUpdate())
+                .setNegativeButton("SONRA", null)
+                .show();
+    }
+
+    private void installUpdate() {
+        if (!UpdateChecker.isDownloaded(this)) {
+            Toast.makeText(this, "Önce güncellemeyi indirin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean opened = UpdateChecker.install(this);
+        if (!opened) {
+            if (!UpdateChecker.canInstall(this)) {
+                Toast.makeText(this, "Kurulum iznini açın, sonra KUR düğmesine "
+                        + "tekrar dokunun", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Kurulum ekranı açılamadı", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void setUpdateStatus(String message, int color) {
+        updateMessage = message;
+        updateMessageColor = color;
+        if (updateStatus != null) {
+            updateStatus.setText(message);
+            updateStatus.setTextColor(color);
+        }
+    }
+
+    private void setUpdateProgress(int percent) {
+        if (updateProgress != null) {
+            updateProgress.setProgress(Math.max(0, Math.min(100, percent)));
+            updateProgress.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void updateUpdateUi() {
+        if (updateVersionValue != null) {
+            updateVersionValue.setText(VERSION);
+        }
+        long last = prefs.getLong(AppPrefs.K_UPDATE_LAST, 0);
+        if (updateLastValue != null) {
+            if (last > 0) {
+                updateLastValue.setText(new SimpleDateFormat("dd.MM.yyyy HH:mm",
+                        Locale.getDefault()).format(new Date(last)));
+            } else {
+                updateLastValue.setText("—");
+            }
+        }
+        if (updateStatus != null) {
+            updateStatus.setText(updateMessage);
+            updateStatus.setTextColor(updateMessageColor);
+        }
+        if (updateAutoSwitch != null) {
+            updateAutoSwitch.setChecked(updateAuto);
+        }
+        if (updateCheckButton != null) {
+            updateCheckButton.setEnabled(!updateChecking && !updateDownloading);
+        }
+        if (updateInstallButton != null) {
+            updateInstallButton.setVisibility(UpdateChecker.isDownloaded(this)
+                    ? View.VISIBLE : View.GONE);
+        }
+        if (updateNotesButton != null) {
+            updateNotesButton.setVisibility(pendingRelease != null
+                    && !pendingRelease.htmlUrl.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+        if (updateProgress != null) {
+            updateProgress.setVisibility(updateDownloading ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void openUrl(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception exception) {
+            Toast.makeText(this, "Bağlantı açılamadı", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String shortError(Throwable error) {
+        String message = error == null ? null : error.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            return error == null ? "Bilinmeyen hata" : error.getClass().getSimpleName();
+        }
+        message = message.trim();
+        return message.length() > 120 ? message.substring(0, 120) + "…" : message;
     }
 
     // ---------------------------------------------------------------- Yardımcılar
