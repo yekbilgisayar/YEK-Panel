@@ -52,8 +52,11 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -3769,11 +3772,28 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private String shortError(Throwable error) {
-        String message = error == null ? null : error.getMessage();
-        if (message == null || message.trim().isEmpty()) {
-            return error == null ? "Bilinmeyen hata" : error.getClass().getSimpleName();
+        if (error == null) {
+            return "Bilinmeyen hata";
         }
-        message = message.trim();
+        String message = error.getMessage() == null ? "" : error.getMessage().trim();
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (error instanceof UnknownHostException
+                || lower.contains("unable to resolve host")
+                || lower.contains("no address associated")) {
+            return "Sunucuya ulaşılamadı. İnternet bağlantısını kontrol edin.";
+        }
+        if (error instanceof SocketTimeoutException) {
+            return "Sunucu yanıt vermedi (zaman aşımı)";
+        }
+        if (error instanceof ConnectException) {
+            return "Sunucuya bağlanılamadı. İnternet bağlantısını kontrol edin.";
+        }
+        if (lower.contains("cleartext")) {
+            return "Güvenli olmayan bağlantı engellendi";
+        }
+        if (message.isEmpty()) {
+            return error.getClass().getSimpleName();
+        }
         return message.length() > 120 ? message.substring(0, 120) + "…" : message;
     }
 

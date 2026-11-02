@@ -31,7 +31,7 @@ PC köprüsü ayrı bir araçtır ve mevcut ayarlarınıza dokunmaz.
 - **Yedekleme:** PC bağlantı bilgileri ve güncelleme tercihi JSON yedeğine dahil edildi.
 - Sürüm: 1.2.0 (versionCode 3); Android 8.0–15. APK test imzalıdır.
 
-Android 1.2.0 doğrulaması: PC köprüsü Windows 11'de `/api/ping`, PIN'li `/api/status` ve UDP keşif ile doğrulandı. Telefonda CPU, RAM, disk, ağ, pil ve işlem listesi canlı görüntülendi; hatalı PIN ve 1 dakikalık kilit denendi. Sahte GitHub akışıyla 1.3.0 güncellemesi algılandı, APK indirildi, bilinmeyen kaynak izni verildi ve Android kurulum onayıyla kurulum tamamlandı. Test verileri temizlendi. `assembleDebug` ve `lintDebug` hatasız; lint "No issues found."
+Android 1.2.0 doğrulaması: PC köprüsü Windows 11'de `/api/ping`, PIN'li `/api/status` ve UDP keşif ile doğrulandı. Telefonda CPU, RAM, disk, ağ, pil ve işlem listesi canlı görüntülendi; hatalı PIN ve 1 dakikalık kilit denendi. Sahte GitHub akışıyla 1.3.0 güncellemesi algılandı, APK indirildi, bilinmeyen kaynak izni verildi ve Android kurulum onayıyla kurulum tamamlandı. Test verileri temizlendi. Güncelleme denetimindeki ağ/DNS hataları Türkçe gösterilir; emülatörde internet olmadığı için gerçek GitHub akışı canlı doğrulanamadı. `assembleDebug` ve `lintDebug` hatasız; lint "No issues found."
 
 ## Android 1.1.0
 
