@@ -124,6 +124,30 @@ public final class ReminderStore {
         prefs.edit().remove(KEY).apply();
     }
 
+    /** Yedekten geri yükleme; mevcut hatırlatıcıların yerine geçer. */
+    public synchronized int replaceAll(List<Reminder> incoming) {
+        List<Reminder> clean = new ArrayList<>();
+        int nextId = 1;
+        if (incoming != null) {
+            for (Reminder reminder : incoming) {
+                if (reminder == null) {
+                    continue;
+                }
+                Reminder item = new Reminder();
+                item.id = reminder.id > 0 ? reminder.id : nextId;
+                nextId = Math.max(nextId, item.id + 1);
+                item.hour = Math.max(0, Math.min(23, reminder.hour));
+                item.minute = Math.max(0, Math.min(59, reminder.minute));
+                item.label = reminder.label == null || reminder.label.trim().isEmpty()
+                        ? "Hatırlatıcı" : reminder.label.trim();
+                item.enabled = reminder.enabled;
+                clean.add(item);
+            }
+        }
+        save(clean);
+        return clean.size();
+    }
+
     // ---- Zamanlama ----
 
     public static void schedule(Context context, Reminder reminder) {

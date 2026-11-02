@@ -3,4 +3,8 @@
     <string name="app_name">YEK Panel</string>
     <string name="channel_alerts">Sistem uyarıları</string>
     <string name="channel_reminders">Hatırlatıcılar</string>
+    <string name="shortcut_tools">Araçlar</string>
+    <string name="shortcut_tools_long">Hız testi, ağ tanılama ve notlar</string>
+    <string name="shortcut_settings">Ayarlar</string>
+    <string name="shortcut_settings_long">Uyarılar, sessiz saatler ve yedekleme</string>
 </resources>

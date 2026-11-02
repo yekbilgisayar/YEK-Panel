@@ -17,6 +17,24 @@ Windows 10/11 için sistem ve sunucu izleme paneli.
 - **Kart düzeni:** Ana ekran kartlarını yukarı/aşağı taşıma, gizleme ve düzeni kalıcı saklama.
 - **Araç Merkezi sekmeleri:** GENEL, OTOMASYON, AĞ ve ARAÇLAR sekmeleri; her sekme bağımsız kaydırılır.
 
+## Android 1.1.0
+
+Android uygulamasına, masaüstü sürümden bağımsız yeni izleme ve tanılama özellikleri eklendi. Windows uygulamasında değişiklik yoktur.
+
+- **Pil detayları:** Voltaj, akım, şarj sayacı, teknoloji ve güç kaynağı panelde.
+- **Ağ detayları:** Sinyal gücü (dBm), bağlantı hızı, ağ geçidi ve DNS; istenince sorgulanan ve panoya kopyalanan dış IP.
+- **Sunucu izleme:** En fazla 8 adres; HTTP durum kodu, gecikme ve SSL kalan gün; 60 saniyede bir otomatik kontrol ve "Tümünü kontrol et".
+- **Hız testi:** OVH, Cloudflare ve Hetzner üzerinden yaklaşık 8 MB indirme; Mbps/MB/süre/sunucu.
+- **Ağ tanılama:** DNS kayıtları ve çözümleme süresi; TCP port testi.
+- **Canlı sensörler:** İvmeölçer, jiroskop, manyetometre, ışık, yakınlık, basınç, nem, ortam sıcaklığı, adım sayacı ve dönüş vektörü; yalnızca ARAÇLAR sekmesi açıkken okunur.
+- **Sessiz saatler ve yenileme:** Gece aralığında pil/sıcaklık bildirimlerini susturma; 2/5/10 saniye yenileme seçimi.
+- **Yedekleme:** Ayarlar, notlar, hatırlatıcılar ve sunucular tek JSON dosyasına yedeklenip geri yüklenebilir.
+- **Tanılama ve kısayollar:** Cihaz özetini kopyalama/paylaşma; launcher'da "Araçlar" ve "Ayarlar" kısayolları.
+- **Cihaz bilgisi:** Güvenlik yaması, çekirdek, ABI, ekran, yenileme hızı, yonga, RAM ve depolama.
+- Sürüm: 1.1.0 (versionCode 2); Android 8.0–15. APK test imzalıdır.
+
+Android 1.1.0 doğrulaması: DNS (4 kayıt / 44 ms), TCP 443 (açık / 24 ms), hız testi (26.9 Mbps), sunucu kontrolü (HTTP 200, SSL 88 gün), dış IP, canlı sensörler, sessiz saatler, yenileme seçimi, yedek dışa/içe aktarma, tanılama paylaşımı ve kısayol sekmeleri emülatörde çalıştı. `assembleDebug` ve `lintDebug` hatasız.
+
 ## Android 1.0.0
 
 YEK Panel artık Android'de de var. Aynı depodan indirilebilen APK; Windows sürümünden bağımsız, kendi sürüm numarasıyla yayınlanır.
@@ -44,7 +62,7 @@ YEK Panel artık Android'de de var. Aynı depodan indirilebilen APK; Windows sü
 | `YEK-Panel-Setup-2.3.0.exe` | Kurulum sihirbazı (önerilen) |
 | `YEK-Panel-2.3.0-portable.exe` | Kurulum gerektirmeyen taşınabilir sürüm |
 | `YEK-Panel-2.3.0-kaynak.zip` | Açık kaynak kod, dokümanlar ve kurulum betiği |
-| `YEK-Panel-Android-1.0.0.apk` | Android 8.0+ için test imzalı APK (Play Store sürümü yakında) |
+| `YEK-Panel-Android-1.1.0.apk` | Android 8.0+ için test imzalı APK (Play Store sürümü yakında) |
 | `SHA256SUMS.txt` | SHA-256 doğrulama değerleri |
 
 ## Kurulum

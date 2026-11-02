@@ -110,6 +110,31 @@ public final class NoteStore {
         prefs.edit().remove(KEY).apply();
     }
 
+    /** Yedekten geri yükleme; mevcut notların yerine geçer. */
+    public synchronized int replaceAll(List<Note> incoming) {
+        List<Note> clean = new ArrayList<>();
+        long next = System.currentTimeMillis();
+        if (incoming != null) {
+            for (Note note : incoming) {
+                if (note == null) {
+                    continue;
+                }
+                Note item = new Note();
+                item.id = note.id > 0 ? note.id : next++;
+                item.title = cleanTitle(note.title, note.body);
+                item.body = note.body == null ? "" : note.body.trim();
+                item.updatedAt = note.updatedAt > 0 ? note.updatedAt : System.currentTimeMillis();
+                clean.add(item);
+            }
+        }
+        Collections.sort(clean, (a, b) -> Long.compare(b.updatedAt, a.updatedAt));
+        while (clean.size() > MAX_NOTES) {
+            clean.remove(clean.size() - 1);
+        }
+        save(clean);
+        return clean.size();
+    }
+
     public synchronized String exportText() {
         StringBuilder builder = new StringBuilder("YEK PANEL · NOTLAR\n\n");
         for (Note note : all()) {

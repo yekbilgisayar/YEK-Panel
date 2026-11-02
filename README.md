@@ -26,7 +26,7 @@ Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 134 özellik.
 
 ## Android
 
-YEK Panel'in Android sürümü de aynı depoda: pil, bellek, depolama, CPU ve ağ paneli; eşik uyarıları, ping testi, notlar ve günlük hatırlatıcılar. APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.0.0.apk`); **Google Play Store sürümü yakında**. Kaynak kod `android/` klasöründe.
+YEK Panel'in Android sürümü de aynı depoda: pil detayları, bellek, depolama, CPU ve ağ paneli; sunucu izleme (HTTP/SSL), indirme hız testi, DNS/port tanılama, dış IP, canlı sensörler, eşik uyarıları, sessiz saatler, notlar, günlük hatırlatıcılar ve JSON yedekleme. APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.1.0.apk`); **Google Play Store sürümü yakında**. Kaynak kod `android/` klasöründe.
 
 ## Kaynak kod
 
@@ -47,7 +47,7 @@ En son sürümü **Releases** bölümünden indirin.
   - Kaldırma ayarlara ve geçmişe dokunmaz; veriler `%AppData%\YekPanel` altında kalır.
 - **Taşınabilir:** `YEK-Panel-2.3.0-portable.exe`
   - Kurulum gerekmez; çift tıklayarak çalıştırın.
-- **Android:** `YEK-Panel-Android-1.0.0.apk`
+- **Android:** `YEK-Panel-Android-1.1.0.apk`
   - Android 8.0 ve üzeri; APK'yı telefona kopyalayıp kurun (bilinmeyen kaynak izni gerekir).
   - Test imzalıdır; Google Play Store sürümü yakında.
 

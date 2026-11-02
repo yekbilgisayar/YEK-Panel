@@ -4,21 +4,25 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.RouteInfo;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.StatFs;
 import android.os.SystemClock;
 import android.telephony.TelephonyManager;
+import android.view.Display;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,6 +44,11 @@ public final class DeviceStats {
         public double batteryTempC = -1;
         public int batteryVoltageMv = -1;
         public String batteryHealth = "—";
+        public String batteryTechnology = "—";
+        public long batteryCurrentUa = Long.MIN_VALUE;
+        public long batteryChargeCounterUah = -1;
+        public int batteryCapacity = -1;
+        public String powerSource = "Pil";
 
         public long ramTotal = 0;
         public long ramAvail = 0;
@@ -55,8 +64,21 @@ public final class DeviceStats {
         public double load1 = -1;
         public String soc = "";
 
+        public String securityPatch = "—";
+        public String kernel = "—";
+        public String abi = "—";
+        public int screenWidth = 0;
+        public int screenHeight = 0;
+        public int screenDpi = 0;
+        public float refreshRate = 0;
+
         public String connType = "Bağlantı yok";
         public String localIp = "—";
+        public String gateway = "—";
+        public String dns = "—";
+        public int signalDbm = Integer.MIN_VALUE;
+        public int linkDownKbps = -1;
+        public int linkUpKbps = -1;
         public boolean connected = false;
         public boolean wifi = false;
     }
@@ -79,6 +101,8 @@ public final class DeviceStats {
         readMemory(context, s);
         readStorage(s);
         readCpu(s);
+        readBuildDetails(s);
+        readDisplay(context, s);
         readNetwork(context, s);
         return s;
     }
@@ -111,8 +135,50 @@ public final class DeviceStats {
             }
             int health = battery.getIntExtra(BatteryManager.EXTRA_HEALTH, -1);
             s.batteryHealth = healthLabel(health);
+
+            String technology = battery.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
+            if (technology != null && !technology.trim().isEmpty()) {
+                s.batteryTechnology = technology.trim();
+            }
+            int pluggedSource = battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
+            s.powerSource = powerSourceLabel(pluggedSource);
+
+            BatteryManager manager =
+                    (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            if (manager != null) {
+                long current = manager.getLongProperty(
+                        BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+                if (current != Long.MIN_VALUE && current != Long.MAX_VALUE) {
+                    s.batteryCurrentUa = current;
+                }
+                long charge = manager.getLongProperty(
+                        BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+                if (charge > 0) {
+                    s.batteryChargeCounterUah = charge;
+                }
+                int capacity = manager.getIntProperty(
+                        BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                if (capacity >= 0) {
+                    s.batteryCapacity = capacity;
+                }
+            }
         } catch (Exception ignored) {
             // Üretici kısıtlaması: pil bilgisi okunamadı.
+        }
+    }
+
+    private static String powerSourceLabel(int plugged) {
+        switch (plugged) {
+            case BatteryManager.BATTERY_PLUGGED_AC:
+                return "AC adaptör";
+            case BatteryManager.BATTERY_PLUGGED_USB:
+                return "USB";
+            case BatteryManager.BATTERY_PLUGGED_WIRELESS:
+                return "Kablosuz";
+            case 8:
+                return "Dock";
+            default:
+                return "Pil";
         }
     }
 
@@ -262,6 +328,45 @@ public final class DeviceStats {
         }
     }
 
+    private static void readBuildDetails(Snapshot s) {
+        try {
+            if (Build.VERSION.SECURITY_PATCH != null
+                    && !Build.VERSION.SECURITY_PATCH.trim().isEmpty()) {
+                s.securityPatch = Build.VERSION.SECURITY_PATCH;
+            }
+            String kernel = System.getProperty("os.version");
+            if (kernel != null && !kernel.trim().isEmpty()) {
+                s.kernel = kernel;
+            }
+            if (Build.SUPPORTED_ABIS != null && Build.SUPPORTED_ABIS.length > 0) {
+                s.abi = Build.SUPPORTED_ABIS[0];
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void readDisplay(Context context, Snapshot s) {
+        try {
+            DisplayManager manager =
+                    (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+            if (manager == null) {
+                return;
+            }
+            Display display = manager.getDisplay(Display.DEFAULT_DISPLAY);
+            if (display == null) {
+                return;
+            }
+            Display.Mode mode = display.getMode();
+            if (mode != null) {
+                s.screenWidth = mode.getPhysicalWidth();
+                s.screenHeight = mode.getPhysicalHeight();
+                s.refreshRate = mode.getRefreshRate();
+            }
+            s.screenDpi = context.getResources().getDisplayMetrics().densityDpi;
+        } catch (Exception ignored) {
+        }
+    }
+
     private static void readNetwork(Context context, Snapshot s) {
         try {
             ConnectivityManager cm =
@@ -278,6 +383,20 @@ public final class DeviceStats {
                 return;
             }
             s.connected = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            int downstream = caps.getLinkDownstreamBandwidthKbps();
+            int upstream = caps.getLinkUpstreamBandwidthKbps();
+            if (downstream > 0) {
+                s.linkDownKbps = downstream;
+            }
+            if (upstream > 0) {
+                s.linkUpKbps = upstream;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                int strength = caps.getSignalStrength();
+                if (strength > -120 && strength < 0) {
+                    s.signalDbm = strength;
+                }
+            }
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 s.connType = "Wi-Fi";
                 s.wifi = true;
@@ -304,8 +423,51 @@ public final class DeviceStats {
             LinkProperties props = cm.getLinkProperties(active);
             if (props != null) {
                 s.localIp = firstIpv4(props.getLinkAddresses());
+                s.gateway = defaultGateway(props);
+                s.dns = dnsServers(props);
             }
         } catch (Exception ignored) {
+        }
+    }
+
+    private static String defaultGateway(LinkProperties props) {
+        try {
+            for (RouteInfo route : props.getRoutes()) {
+                InetAddress gateway = route.getGateway();
+                if (route.isDefaultRoute() && gateway != null
+                        && !gateway.isAnyLocalAddress() && !gateway.isLinkLocalAddress()) {
+                    return gateway.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "—";
+    }
+
+    private static String dnsServers(LinkProperties props) {
+        try {
+            List<InetAddress> servers = props.getDnsServers();
+            if (servers == null || servers.isEmpty()) {
+                return "—";
+            }
+            StringBuilder builder = new StringBuilder();
+            int count = 0;
+            for (InetAddress server : servers) {
+                if (server.getHostAddress() == null) {
+                    continue;
+                }
+                if (count > 0) {
+                    builder.append(" · ");
+                }
+                builder.append(server.getHostAddress());
+                count++;
+                if (count >= 2) {
+                    break;
+                }
+            }
+            return count == 0 ? "—" : builder.toString();
+        } catch (Exception ignored) {
+            return "—";
         }
     }
 
@@ -347,5 +509,22 @@ public final class DeviceStats {
             return hours + " sa " + minutes + " dk";
         }
         return minutes + " dk";
+    }
+
+    public static String speed(int kbps) {
+        if (kbps <= 0) {
+            return "—";
+        }
+        if (kbps >= 1000) {
+            return String.format(Locale.getDefault(), "%.1f Mbps", kbps / 1000.0);
+        }
+        return kbps + " kbps";
+    }
+
+    public static String signal(int dbm) {
+        if (dbm <= -120 || dbm >= 0) {
+            return "—";
+        }
+        return dbm + " dBm";
     }
 }

@@ -15,11 +15,16 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,17 +51,21 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SensorEventListener {
 
     private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -64,14 +73,12 @@ public class MainActivity extends Activity {
     private static final int REQ_NOTIFICATIONS = 31;
     private static final int REQ_EXPORT_TXT = 41;
     private static final int REQ_EXPORT_MD = 42;
+    private static final int REQ_EXPORT_BACKUP = 51;
+    private static final int REQ_IMPORT_BACKUP = 52;
 
-    private static final String PREFS = "yek_settings";
-    private static final String K_ALERTS = "alerts_enabled";
-    private static final String K_LOW = "alert_low";
-    private static final String K_HIGH = "alert_high";
-    private static final String K_TEMP = "alert_temp";
     private static final long ALERT_COOLDOWN = 30L * 60L * 1000L;
-    private static final String VERSION = "1.0.0";
+    private static final long SERVER_CHECK_INTERVAL = 60L * 1000L;
+    private static final String VERSION = "1.1.0";
 
     private int BG;
     private int ELEVATED;
@@ -161,6 +168,62 @@ public class MainActivity extends Activity {
     private int alertHigh = 90;
     private int alertTemp = 45;
     private boolean alertsEnabled = true;
+    private boolean quietEnabled = false;
+    private int quietStart = 23 * 60;
+    private int quietEnd = 8 * 60;
+    private int refreshSeconds = 2;
+
+    private TextView batteryVoltageValue;
+    private TextView batteryCurrentValue;
+    private TextView batteryChargeValue;
+    private TextView batteryTechValue;
+    private TextView batterySourceValue;
+
+    private TextView netSignalChip;
+    private TextView netLinkChip;
+    private TextView netGatewayValue;
+    private TextView netDnsValue;
+    private TextView externalIpValue;
+    private boolean externalIpLoaded = false;
+    private boolean externalIpLoading = false;
+
+    private EndpointStore endpointStore;
+    private final Map<Long, EndpointChecker.Result> serverResults = new HashMap<>();
+    private LinearLayout serverList;
+    private TextView serverSummary;
+    private TextView serverCheckButton;
+    private boolean checkingServers = false;
+    private long lastServerCheckAt = 0;
+
+    private EditText endpointNameInput;
+    private EditText endpointUrlInput;
+    private TextView endpointSummary;
+    private LinearLayout endpointManageList;
+
+    private TextView speedButton;
+    private TextView speedResult;
+    private ProgressBar speedProgress;
+    private boolean speedRunning = false;
+
+    private EditText diagHostInput;
+    private EditText diagPortInput;
+    private TextView diagResult;
+    private boolean diagRunning = false;
+
+    private SensorManager sensorManager;
+    private Switch sensorSwitch;
+    private LinearLayout sensorList;
+    private final List<Sensor> activeSensors = new ArrayList<>();
+    private final Map<Integer, TextView> sensorValueViews = new HashMap<>();
+    private final Map<Integer, Long> sensorLastUi = new HashMap<>();
+    private boolean sensorsRunning = false;
+
+    private Switch quietSwitch;
+    private TextView quietStartButton;
+    private TextView quietEndButton;
+    private final TextView[] refreshChips = new TextView[3];
+    private TextView backupStatus;
+    private String pendingRestoreJson = "";
 
     private final String[] pingTargets = {"1.1.1.1", "8.8.8.8", "9.9.9.9"};
     private final String[] pingLabels = {"CLOUDFLARE", "GOOGLE", "QUAD9"};
@@ -170,8 +233,9 @@ public class MainActivity extends Activity {
         public void run() {
             if (currentPage == 0) {
                 refreshPanel();
+                maybeCheckServers();
             }
-            handler.postDelayed(this, 2000);
+            handler.postDelayed(this, Math.max(1, refreshSeconds) * 1000L);
         }
     };
 
@@ -179,10 +243,13 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initPalette();
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        prefs = getSharedPreferences(AppPrefs.PREFS, MODE_PRIVATE);
         loadAlertSettings();
+        loadBehaviorSettings();
         noteStore = new NoteStore(this);
         reminderStore = new ReminderStore(this);
+        endpointStore = new EndpointStore(this);
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         NotificationHelper.ensureChannels(this);
 
         setContentView(buildRoot());
@@ -196,11 +263,37 @@ public class MainActivity extends Activity {
                                 | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
         }
-        showPage(0);
+        showPage(pageFromIntent(getIntent()));
         refreshPanel();
         refreshNotes();
         refreshReminders();
+        refreshEndpointManagement();
+        refreshServerPanel();
         updateNotificationState();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        showPage(pageFromIntent(intent));
+    }
+
+    private int pageFromIntent(Intent intent) {
+        if (intent == null) {
+            return 0;
+        }
+        Object raw = intent.getExtras() == null ? null : intent.getExtras().get("page");
+        int page = 0;
+        if (raw instanceof Number) {
+            page = ((Number) raw).intValue();
+        } else if (raw != null) {
+            try {
+                page = Integer.parseInt(raw.toString().trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return Math.max(0, Math.min(2, page));
     }
 
     @Override
@@ -210,6 +303,9 @@ public class MainActivity extends Activity {
         handler.post(ticker);
         if (currentPage == 0) {
             refreshPanel();
+            maybeCheckServers();
+        } else if (currentPage == 1) {
+            restartSensorsIfNeeded();
         }
     }
 
@@ -217,6 +313,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(ticker);
+        stopSensors();
     }
 
     @Override
@@ -242,10 +339,18 @@ public class MainActivity extends Activity {
     }
 
     private void loadAlertSettings() {
-        alertsEnabled = prefs.getBoolean(K_ALERTS, true);
-        alertLow = prefs.getInt(K_LOW, 20);
-        alertHigh = prefs.getInt(K_HIGH, 90);
-        alertTemp = prefs.getInt(K_TEMP, 45);
+        alertsEnabled = prefs.getBoolean(AppPrefs.K_ALERTS, true);
+        alertLow = prefs.getInt(AppPrefs.K_LOW, AppPrefs.DEFAULT_LOW);
+        alertHigh = prefs.getInt(AppPrefs.K_HIGH, AppPrefs.DEFAULT_HIGH);
+        alertTemp = prefs.getInt(AppPrefs.K_TEMP, AppPrefs.DEFAULT_TEMP);
+    }
+
+    private void loadBehaviorSettings() {
+        quietEnabled = prefs.getBoolean(AppPrefs.K_QUIET, false);
+        quietStart = prefs.getInt(AppPrefs.K_QUIET_START, AppPrefs.DEFAULT_QUIET_START);
+        quietEnd = prefs.getInt(AppPrefs.K_QUIET_END, AppPrefs.DEFAULT_QUIET_END);
+        int saved = prefs.getInt(AppPrefs.K_REFRESH, AppPrefs.DEFAULT_REFRESH);
+        refreshSeconds = saved == 5 || saved == 10 ? saved : AppPrefs.DEFAULT_REFRESH;
     }
 
     // ---------------------------------------------------------------- Iskelet
@@ -379,12 +484,18 @@ public class MainActivity extends Activity {
 
         if (index == 0) {
             refreshPanel();
+            maybeCheckServers();
         } else if (index == 1) {
             refreshToolsNetwork();
             refreshNotes();
             refreshReminders();
+            refreshEndpointManagement();
+            restartSensorsIfNeeded();
         } else {
             updateNotificationState();
+        }
+        if (index != 1) {
+            stopSensors();
         }
     }
 
@@ -394,6 +505,7 @@ public class MainActivity extends Activity {
             refreshToolsNetwork();
             refreshNotes();
             refreshReminders();
+            refreshEndpointManagement();
         }
         updateNotificationState();
         Toast.makeText(this, "Veriler güncellendi", Toast.LENGTH_SHORT).show();
@@ -462,6 +574,20 @@ public class MainActivity extends Activity {
 
         hero.addView(info, infoLp);
         addCard(c, hero);
+
+        LinearLayout batteryCard = card();
+        batteryCard.addView(cardHeader("PİL DETAYLARI", null));
+        batteryVoltageValue = rowValue();
+        addInfoRow(batteryCard, "Voltaj", batteryVoltageValue);
+        batteryCurrentValue = rowValue();
+        addInfoRow(batteryCard, "Akım", batteryCurrentValue);
+        batteryChargeValue = rowValue();
+        addInfoRow(batteryCard, "Şarj sayacı", batteryChargeValue);
+        batteryTechValue = rowValue();
+        addInfoRow(batteryCard, "Teknoloji", batteryTechValue);
+        batterySourceValue = rowValue();
+        addInfoRow(batteryCard, "Kaynak", batterySourceValue);
+        addCard(c, batteryCard);
 
         LinearLayout cpuCard = card();
         cpuChip = chip("— ÇEKİRDEK", ACCENT);
@@ -542,10 +668,54 @@ public class MainActivity extends Activity {
         netIp = text("—", 12, MUTED, false);
         netIp.setPadding(0, dp(2), 0, 0);
         netCard.addView(netIp);
-        TextView netHint = text("Gecikme ölçmek için Araçlar → Ağ testi", 10, MUTED, false);
-        netHint.setPadding(0, dp(10), 0, 0);
+
+        LinearLayout netChips = new LinearLayout(this);
+        netChips.setOrientation(LinearLayout.HORIZONTAL);
+        netChips.setPadding(0, dp(9), 0, 0);
+        netSignalChip = chip("— dBm", ACCENT);
+        netLinkChip = chip("—", ACCENT);
+        netChips.addView(netSignalChip);
+        LinearLayout.LayoutParams linkLp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        linkLp.leftMargin = dp(6);
+        netChips.addView(netLinkChip, linkLp);
+        netCard.addView(netChips);
+
+        netGatewayValue = rowValue();
+        addInfoRow(netCard, "Ağ geçidi", netGatewayValue);
+        netDnsValue = rowValue();
+        addInfoRow(netCard, "DNS", netDnsValue);
+        externalIpValue = rowValue();
+        externalIpValue.setText("Dokun → getir");
+        externalIpValue.setTextColor(ACCENT);
+        externalIpValue.setContentDescription("Dış IP adresini getir");
+        externalIpValue.setOnClickListener(v -> {
+            if (externalIpLoaded) {
+                copyText("Dış IP", externalIpValue.getText().toString());
+            } else {
+                fetchExternalIp();
+            }
+        });
+        addInfoRow(netCard, "Dış IP", externalIpValue);
+
+        TextView netHint = text("Dış IP yalnızca dokununca sorgulanır; sonraki dokunuş kopyalar.",
+                10, MUTED, false);
+        netHint.setPadding(0, dp(8), 0, 0);
         netCard.addView(netHint);
         addCard(c, netCard);
+
+        LinearLayout serverCard = card();
+        serverSummary = chip("0 SUNUCU", MUTED);
+        serverCard.addView(cardHeader("SUNUCULAR", serverSummary));
+        serverList = new LinearLayout(this);
+        serverList.setOrientation(LinearLayout.VERTICAL);
+        serverCard.addView(serverList);
+        serverCheckButton = button("TÜMÜNÜ KONTROL ET", false);
+        LinearLayout.LayoutParams checkLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        checkLp.topMargin = dp(10);
+        serverCheckButton.setContentDescription("Tüm sunucuları kontrol et");
+        serverCheckButton.setOnClickListener(v -> checkServers());
+        serverCard.addView(serverCheckButton, checkLp);
+        addCard(c, serverCard);
 
         LinearLayout sysCard = card();
         sysCard.addView(cardHeader("SİSTEM", null));
@@ -588,7 +758,27 @@ public class MainActivity extends Activity {
         applyChip(batteryHealthChip, "Sağlık: " + st.batteryHealth,
                 "—".equals(st.batteryHealth) ? MUTED : GREEN);
         batteryHint.setText("Uyarı eşiği: %" + alertLow + " · "
-                + (alertsEnabled ? "uyarılar açık" : "uyarılar kapalı"));
+                + (alertsEnabled ? "uyarılar açık" : "uyarılar kapalı")
+                + (quietEnabled && isQuietNow() ? " · sessiz saat" : ""));
+
+        if (batteryVoltageValue != null) {
+            batteryVoltageValue.setText(st.batteryVoltageMv > 0
+                    ? String.format(Locale.getDefault(), "%.2f V",
+                    st.batteryVoltageMv / 1000.0) : "—");
+            long current = st.batteryCurrentUa;
+            if (current == Long.MIN_VALUE || current == 0) {
+                batteryCurrentValue.setText("—");
+            } else {
+                double ma = Math.abs(current) / 1000.0;
+                batteryCurrentValue.setText(String.format(Locale.getDefault(),
+                        "%.0f mA · %s", ma, st.charging ? "şarj" : "tüketim"));
+            }
+            batteryChargeValue.setText(st.batteryChargeCounterUah > 0
+                    ? String.format(Locale.getDefault(), "%.0f mAh",
+                    st.batteryChargeCounterUah / 1000.0) : "—");
+            batteryTechValue.setText(st.batteryTechnology);
+            batterySourceValue.setText(st.powerSource);
+        }
 
         cpuChip.setText(st.cores + " ÇEKİRDEK");
         if (st.cpuLoad >= 0) {
@@ -620,8 +810,15 @@ public class MainActivity extends Activity {
                 st.storagePercent >= 85 ? ORANGE : ACCENT);
 
         netType.setText(st.connType);
-        netIp.setText(st.localIp);
+        netIp.setText(st.localIp + (st.wifi ? " · Wi-Fi" : ""));
         applyChip(netChip, st.connected ? "BAĞLI" : "ÇEVRİMDIŞI", st.connected ? GREEN : RED);
+        applyChip(netSignalChip, DeviceStats.signal(st.signalDbm),
+                st.signalDbm > -120 && st.signalDbm < 0
+                        ? (st.signalDbm > -70 ? GREEN : ORANGE) : MUTED);
+        applyChip(netLinkChip, st.linkDownKbps > 0
+                ? "↓ " + DeviceStats.speed(st.linkDownKbps) : "—", ACCENT);
+        netGatewayValue.setText(st.gateway);
+        netDnsValue.setText(st.dns);
 
         sysDevice.setText(deviceName(st));
         sysAndroid.setText(st.android + " · API " + st.sdk);
@@ -652,6 +849,9 @@ public class MainActivity extends Activity {
     }
 
     private void evaluateAlerts(DeviceStats.Snapshot st) {
+        if (quietEnabled && isQuietNow()) {
+            return;
+        }
         long now = System.currentTimeMillis();
         if (st.batteryPercent >= 0 && st.batteryPercent <= alertLow && !st.charging
                 && now - prefs.getLong("last_low", 0) > ALERT_COOLDOWN) {
@@ -683,7 +883,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = pageScroll();
         LinearLayout c = content(scroll);
 
-        c.addView(sectionHeader("ARAÇLAR", chip("3 ARAÇ", ACCENT)));
+        c.addView(sectionHeader("ARAÇLAR", chip("7 ARAÇ", ACCENT)));
 
         LinearLayout netCard = card();
         netCard.addView(cardHeader("AĞ TESTİ", chip("ICMP", ACCENT)));
@@ -731,6 +931,116 @@ public class MainActivity extends Activity {
         pingResult.setLineSpacing(dp(3), 1f);
         netCard.addView(pingResult);
         addCard(c, netCard);
+
+        LinearLayout speedCard = card();
+        speedCard.addView(cardHeader("HIZ TESTİ", chip("8 MB", ACCENT)));
+        TextView speedDesc = text("İndirme hızını OVH, Cloudflare ve Hetzner sırasıyla ölçer. "
+                + "Test yaklaşık 8 MB veri kullanır.", 11, MUTED, false);
+        speedDesc.setPadding(0, dp(6), 0, 0);
+        speedDesc.setLineSpacing(dp(3), 1f);
+        speedCard.addView(speedDesc);
+
+        speedButton = button("İNDİRME HIZINI ÖLÇ", true);
+        LinearLayout.LayoutParams speedLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        speedLp.topMargin = dp(12);
+        speedButton.setContentDescription("İndirme hızını ölç");
+        speedButton.setOnClickListener(v -> runSpeedTest());
+        speedCard.addView(speedButton, speedLp);
+
+        speedProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleSmall);
+        speedProgress.setIndeterminateTintList(ColorStateList.valueOf(ACCENT));
+        speedProgress.setVisibility(View.GONE);
+        LinearLayout.LayoutParams speedProgressLp =
+                new LinearLayout.LayoutParams(dp(22), dp(22));
+        speedProgressLp.gravity = Gravity.CENTER_HORIZONTAL;
+        speedProgressLp.topMargin = dp(8);
+        speedCard.addView(speedProgress, speedProgressLp);
+
+        speedResult = text("Hazır. Test başlatıldığında sonuç burada görünür.", 12, MUTED, false);
+        speedResult.setPadding(0, dp(8), 0, 0);
+        speedResult.setLineSpacing(dp(3), 1f);
+        speedCard.addView(speedResult);
+        addCard(c, speedCard);
+
+        LinearLayout diagCard = card();
+        diagCard.addView(cardHeader("AĞ TANILAMA", chip("DNS · TCP", ACCENT)));
+        TextView diagDesc = text("Adres çözümleme süresini ve bir TCP portunun açık olup "
+                + "olmadığını sınar.", 11, MUTED, false);
+        diagDesc.setPadding(0, dp(6), 0, 0);
+        diagDesc.setLineSpacing(dp(3), 1f);
+        diagCard.addView(diagDesc);
+
+        LinearLayout diagInputs = new LinearLayout(this);
+        diagInputs.setOrientation(LinearLayout.HORIZONTAL);
+        diagHostInput = input("Adres (örn. cloudflare.com)", false);
+        diagHostInput.setText("cloudflare.com");
+        diagHostInput.setContentDescription("Tanılama adresi");
+        diagPortInput = input("Port", false);
+        diagPortInput.setText("443");
+        diagPortInput.setContentDescription("Port numarası");
+        diagInputs.addView(diagHostInput, new LinearLayout.LayoutParams(0, WRAP, 2.2f));
+        LinearLayout.LayoutParams portLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        portLp.leftMargin = dp(6);
+        diagInputs.addView(diagPortInput, portLp);
+        LinearLayout.LayoutParams diagInputsLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        diagInputsLp.topMargin = dp(10);
+        diagCard.addView(diagInputs, diagInputsLp);
+
+        LinearLayout diagActions = new LinearLayout(this);
+        diagActions.setOrientation(LinearLayout.HORIZONTAL);
+        TextView dnsButton = button("DNS SORGULA", true);
+        dnsButton.setContentDescription("DNS sorgula");
+        dnsButton.setOnClickListener(v -> runDnsLookup());
+        TextView portButton = button("PORT TEST ET", false);
+        portButton.setContentDescription("Port test et");
+        portButton.setOnClickListener(v -> runPortTest());
+        diagActions.addView(dnsButton, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        LinearLayout.LayoutParams portButtonLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        portButtonLp.leftMargin = dp(6);
+        diagActions.addView(portButton, portButtonLp);
+        LinearLayout.LayoutParams diagActionsLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        diagActionsLp.topMargin = dp(8);
+        diagCard.addView(diagActions, diagActionsLp);
+
+        diagResult = text("Hazır. Bir sorgu seçin.", 12, MUTED, false);
+        diagResult.setPadding(0, dp(8), 0, 0);
+        diagResult.setLineSpacing(dp(3), 1f);
+        diagCard.addView(diagResult);
+        addCard(c, diagCard);
+
+        LinearLayout serversCard = card();
+        endpointSummary = chip("0 / 8", ACCENT);
+        serversCard.addView(cardHeader("SUNUCULAR", endpointSummary));
+        TextView serversDesc = text("Web sitesi veya panel adresi ekleyin. Panel sekmesinde "
+                + "durum, gecikme ve SSL kalan gün gösterilir.", 11, MUTED, false);
+        serversDesc.setPadding(0, dp(6), 0, 0);
+        serversDesc.setLineSpacing(dp(3), 1f);
+        serversCard.addView(serversDesc);
+
+        endpointNameInput = input("Sunucu adı (örn. Site)", false);
+        endpointNameInput.setContentDescription("Sunucu adı");
+        LinearLayout.LayoutParams endpointNameLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        endpointNameLp.topMargin = dp(10);
+        serversCard.addView(endpointNameInput, endpointNameLp);
+
+        endpointUrlInput = input("Adres (örn. https://ornek.com)", false);
+        endpointUrlInput.setContentDescription("Sunucu adresi");
+        LinearLayout.LayoutParams endpointUrlLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        endpointUrlLp.topMargin = dp(8);
+        serversCard.addView(endpointUrlInput, endpointUrlLp);
+
+        TextView addEndpoint = button("SUNUCU EKLE", true);
+        LinearLayout.LayoutParams addEndpointLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        addEndpointLp.topMargin = dp(10);
+        addEndpoint.setContentDescription("Sunucu ekle");
+        addEndpoint.setOnClickListener(v -> addEndpoint());
+        serversCard.addView(addEndpoint, addEndpointLp);
+
+        endpointManageList = new LinearLayout(this);
+        endpointManageList.setOrientation(LinearLayout.VERTICAL);
+        endpointManageList.setPadding(0, dp(6), 0, 0);
+        serversCard.addView(endpointManageList);
+        addCard(c, serversCard);
 
         LinearLayout notesCard = card();
         noteCountChip = chip("0 NOT", ACCENT);
@@ -821,6 +1131,30 @@ public class MainActivity extends Activity {
         reminderList.setPadding(0, dp(6), 0, 0);
         remCard.addView(reminderList);
         addCard(c, remCard);
+
+        LinearLayout sensorsCard = card();
+        sensorSwitch = new Switch(this);
+        sensorSwitch.setShowText(false);
+        sensorSwitch.setChecked(false);
+        sensorSwitch.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        sensorSwitch.setTrackTintList(ColorStateList.valueOf(Color.parseColor("#1E2A44")));
+        sensorSwitch.setContentDescription("Canlı sensörler");
+        sensorSwitch.setOnCheckedChangeListener((button, checked) ->
+                setSensorsEnabled(checked, true));
+        sensorsCard.addView(cardHeader("SENSÖRLER", sensorSwitch));
+        TextView sensorsDesc = text("İvmeölçer, jiroskop, ışık, yakınlık, basınç ve adım "
+                + "sayacı gibi sensörleri canlı okur. Pil tüketimini azaltmak için yalnızca "
+                + "bu sekme açıkken çalışır.", 11, MUTED, false);
+        sensorsDesc.setPadding(0, dp(6), 0, 0);
+        sensorsDesc.setLineSpacing(dp(3), 1f);
+        sensorsCard.addView(sensorsDesc);
+
+        sensorList = new LinearLayout(this);
+        sensorList.setOrientation(LinearLayout.VERTICAL);
+        sensorList.setPadding(0, dp(6), 0, 0);
+        sensorsCard.addView(sensorList);
+        showSensorsOffMessage();
+        addCard(c, sensorsCard);
 
         return scroll;
     }
@@ -930,6 +1264,581 @@ public class MainActivity extends Activity {
                 "%d/3 yanıt · ortalama %.0f ms%nEn iyi %.0f ms · en kötü %.0f ms",
                 times.size(), avg, min, max);
         return new PingOutcome(text, color);
+    }
+
+    // ---------------------------------------------------------------- Sunucular
+
+    private void addEndpoint() {
+        if (endpointNameInput == null || endpointUrlInput == null) {
+            return;
+        }
+        String name = endpointNameInput.getText().toString().trim();
+        String rawUrl = endpointUrlInput.getText().toString().trim();
+        if (rawUrl.isEmpty()) {
+            Toast.makeText(this, "Sunucu adresi gerekli", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (EndpointStore.normalizeUrl(rawUrl) == null) {
+            Toast.makeText(this, "Geçerli bir adres girin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (endpointStore.all().size() >= EndpointStore.MAX_ENDPOINTS) {
+            Toast.makeText(this, "En fazla " + EndpointStore.MAX_ENDPOINTS
+                    + " sunucu eklenebilir", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        EndpointStore.Endpoint endpoint = endpointStore.add(name, rawUrl);
+        if (endpoint == null) {
+            Toast.makeText(this, "Bu adres zaten ekli", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        endpointNameInput.setText("");
+        endpointUrlInput.setText("");
+        refreshEndpointManagement();
+        refreshServerPanel();
+        Toast.makeText(this, endpoint.name + " eklendi", Toast.LENGTH_SHORT).show();
+    }
+
+    private void refreshEndpointManagement() {
+        if (endpointManageList == null || endpointSummary == null) {
+            return;
+        }
+        List<EndpointStore.Endpoint> endpoints = endpointStore.all();
+        endpointSummary.setText(endpoints.size() + " / " + EndpointStore.MAX_ENDPOINTS);
+        endpointManageList.removeAllViews();
+        if (endpoints.isEmpty()) {
+            TextView empty = text("Henüz sunucu yok. İlk adresi ekleyin.", 11, MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, dp(14), 0, dp(8));
+            endpointManageList.addView(empty);
+            return;
+        }
+        for (EndpointStore.Endpoint endpoint : endpoints) {
+            endpointManageList.addView(endpointRow(endpoint));
+        }
+    }
+
+    private View endpointRow(EndpointStore.Endpoint endpoint) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(bg(Color.parseColor("#0E1728"), 12, STROKE));
+        box.setPadding(dp(12), dp(10), dp(12), dp(9));
+        LinearLayout.LayoutParams boxLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        boxLp.topMargin = dp(8);
+        box.setLayoutParams(boxLp);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = text(endpoint.name, 13, TEXT, true);
+        name.setMaxLines(1);
+        head.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        TextView delete = actionChip("SİL", RED);
+        delete.setOnClickListener(v -> confirmDeleteEndpoint(endpoint));
+        head.addView(delete);
+        box.addView(head);
+
+        TextView url = text(endpoint.url, 10, MUTED, false);
+        url.setMaxLines(1);
+        url.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        url.setPadding(0, dp(3), 0, 0);
+        box.addView(url);
+
+        EndpointChecker.Result result = serverResults.get(endpoint.id);
+        String meta;
+        int color;
+        if (result == null) {
+            meta = "Henüz kontrol edilmedi";
+            color = MUTED;
+        } else if (!result.error.isEmpty()) {
+            meta = result.error;
+            color = RED;
+        } else {
+            meta = EndpointChecker.latencyLabel(result)
+                    + (result.sslDays >= 0 ? " · SSL " + result.sslDays + " gün" : "");
+            color = result.healthy() ? GREEN : ORANGE;
+        }
+        TextView status = text(meta, 9, color, false);
+        status.setPadding(0, dp(5), 0, 0);
+        box.addView(status);
+        return box;
+    }
+
+    private void confirmDeleteEndpoint(EndpointStore.Endpoint endpoint) {
+        new AlertDialog.Builder(this)
+                .setTitle("Sunucu silinsin mi?")
+                .setMessage(endpoint.name + "\n" + endpoint.url)
+                .setPositiveButton("Sil", (dialog, which) -> {
+                    endpointStore.delete(endpoint.id);
+                    serverResults.remove(endpoint.id);
+                    refreshEndpointManagement();
+                    refreshServerPanel();
+                    Toast.makeText(this, "Sunucu silindi", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Vazgeç", null)
+                .show();
+    }
+
+    private void refreshServerPanel() {
+        if (serverList == null || serverSummary == null) {
+            return;
+        }
+        List<EndpointStore.Endpoint> endpoints = endpointStore.all();
+        int healthy = 0;
+        for (EndpointStore.Endpoint endpoint : endpoints) {
+            EndpointChecker.Result result = serverResults.get(endpoint.id);
+            if (result != null && result.healthy()) {
+                healthy++;
+            }
+        }
+        if (endpoints.isEmpty()) {
+            applyChip(serverSummary, "0 SUNUCU", MUTED);
+        } else {
+            int color = healthy == endpoints.size() ? GREEN : (healthy == 0 ? RED : ORANGE);
+            applyChip(serverSummary, healthy + "/" + endpoints.size() + " ÇEVRİMİÇİ", color);
+        }
+        serverList.removeAllViews();
+        if (endpoints.isEmpty()) {
+            TextView empty = text("Henüz sunucu eklenmedi. Araçlar → Sunucular'dan ekleyin.",
+                    11, MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, dp(14), 0, dp(6));
+            serverList.addView(empty);
+        } else {
+            for (EndpointStore.Endpoint endpoint : endpoints) {
+                serverList.addView(serverRow(endpoint));
+            }
+        }
+        if (serverCheckButton != null) {
+            serverCheckButton.setEnabled(!checkingServers);
+            serverCheckButton.setAlpha(checkingServers ? 0.55f : 1f);
+            serverCheckButton.setText(checkingServers ? "KONTROL EDİLİYOR…"
+                    : "TÜMÜNÜ KONTROL ET");
+        }
+    }
+
+    private View serverRow(EndpointStore.Endpoint endpoint) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(bg(Color.parseColor("#0E1728"), 12, STROKE));
+        box.setPadding(dp(12), dp(10), dp(12), dp(9));
+        LinearLayout.LayoutParams boxLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        boxLp.topMargin = dp(8);
+        box.setLayoutParams(boxLp);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = text(endpoint.name, 13, TEXT, true);
+        name.setMaxLines(1);
+        head.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        EndpointChecker.Result result = serverResults.get(endpoint.id);
+        int color = result == null ? MUTED
+                : (result.healthy() ? GREEN : (result.reachable() ? ORANGE : RED));
+        head.addView(chip(EndpointChecker.codeLabel(result), color));
+        box.addView(head);
+
+        TextView url = text(endpoint.url, 9, MUTED, false);
+        url.setMaxLines(1);
+        url.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        url.setPadding(0, dp(3), 0, 0);
+        box.addView(url);
+
+        String meta;
+        if (result == null) {
+            meta = "Henüz kontrol edilmedi";
+        } else if (!result.error.isEmpty()) {
+            meta = result.error;
+        } else {
+            meta = EndpointChecker.latencyLabel(result)
+                    + (result.sslDays >= 0 ? " · SSL " + result.sslDays + " gün" : "");
+        }
+        TextView detail = text(meta, 9,
+                result != null && result.sslDays >= 0 && result.sslDays < 15 ? ORANGE : MUTED,
+                false);
+        detail.setPadding(0, dp(5), 0, 0);
+        box.addView(detail);
+        return box;
+    }
+
+    private void maybeCheckServers() {
+        if (checkingServers || endpointStore == null || currentPage != 0) {
+            return;
+        }
+        if (endpointStore.all().isEmpty()) {
+            return;
+        }
+        if (System.currentTimeMillis() - lastServerCheckAt < SERVER_CHECK_INTERVAL) {
+            return;
+        }
+        checkServers();
+    }
+
+    private void checkServers() {
+        if (checkingServers) {
+            return;
+        }
+        final List<EndpointStore.Endpoint> endpoints = endpointStore.all();
+        if (endpoints.isEmpty()) {
+            Toast.makeText(this, "Önce Araçlar → Sunucular'dan adres ekleyin",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        checkingServers = true;
+        lastServerCheckAt = System.currentTimeMillis();
+        refreshServerPanel();
+        new Thread(() -> {
+            final Map<Long, EndpointChecker.Result> checked = new HashMap<>();
+            for (EndpointStore.Endpoint endpoint : endpoints) {
+                checked.put(endpoint.id, EndpointChecker.check(endpoint.url));
+            }
+            runOnUiThread(() -> {
+                checkingServers = false;
+                lastServerCheckAt = System.currentTimeMillis();
+                serverResults.clear();
+                serverResults.putAll(checked);
+                refreshServerPanel();
+                refreshEndpointManagement();
+            });
+        }, "yek-servers").start();
+    }
+
+    // ---------------------------------------------------------------- Ağ araçları
+
+    private void fetchExternalIp() {
+        if (externalIpLoading || externalIpValue == null) {
+            return;
+        }
+        externalIpLoading = true;
+        externalIpValue.setText("Getiriliyor…");
+        externalIpValue.setTextColor(MUTED);
+        new Thread(() -> {
+            final NetworkTools.ExternalInfo info = NetworkTools.externalIp();
+            runOnUiThread(() -> {
+                externalIpLoading = false;
+                if (info.ok()) {
+                    externalIpLoaded = true;
+                    externalIpValue.setText(info.ip);
+                    externalIpValue.setTextColor(ACCENT);
+                    Toast.makeText(this, info.summary(), Toast.LENGTH_LONG).show();
+                } else {
+                    externalIpLoaded = false;
+                    externalIpValue.setText("Alınamadı · tekrar dene");
+                    externalIpValue.setTextColor(ORANGE);
+                }
+            });
+        }, "yek-external-ip").start();
+    }
+
+    private void runSpeedTest() {
+        if (speedRunning) {
+            return;
+        }
+        speedRunning = true;
+        speedButton.setEnabled(false);
+        speedButton.setAlpha(0.6f);
+        speedProgress.setVisibility(View.VISIBLE);
+        speedResult.setTextColor(MUTED);
+        speedResult.setText("Test ediliyor… 8 MB indiriliyor");
+        new Thread(() -> {
+            final SpeedTestService.Result result = SpeedTestService.run();
+            runOnUiThread(() -> {
+                speedRunning = false;
+                speedButton.setEnabled(true);
+                speedButton.setAlpha(1f);
+                speedProgress.setVisibility(View.GONE);
+                speedResult.setText(SpeedTestService.summary(result));
+                speedResult.setTextColor(result.ok() ? GREEN : RED);
+            });
+        }, "yek-speed").start();
+    }
+
+    private void runDnsLookup() {
+        if (diagRunning) {
+            return;
+        }
+        final String host = NetworkTools.cleanHost(diagHostInput.getText().toString());
+        if (host.isEmpty()) {
+            Toast.makeText(this, "Bir adres girin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        diagRunning = true;
+        diagResult.setTextColor(MUTED);
+        diagResult.setText("DNS sorgulanıyor…");
+        new Thread(() -> {
+            final NetworkTools.DnsResult result = NetworkTools.resolve(host);
+            runOnUiThread(() -> {
+                diagRunning = false;
+                if (!result.error.isEmpty()) {
+                    diagResult.setTextColor(RED);
+                    diagResult.setText(result.error + " · " + host);
+                    return;
+                }
+                StringBuilder builder = new StringBuilder();
+                builder.append(result.addresses.size()).append(" kayıt · ")
+                        .append(result.elapsedMs).append(" ms");
+                int shown = 0;
+                for (String address : result.addresses) {
+                    builder.append('\n').append(address);
+                    shown++;
+                    if (shown >= 4) {
+                        break;
+                    }
+                }
+                diagResult.setTextColor(GREEN);
+                diagResult.setText(builder.toString());
+            });
+        }, "yek-dns").start();
+    }
+
+    private void runPortTest() {
+        if (diagRunning) {
+            return;
+        }
+        final String host = NetworkTools.cleanHost(diagHostInput.getText().toString());
+        int port;
+        try {
+            port = Integer.parseInt(diagPortInput.getText().toString().trim());
+        } catch (Exception error) {
+            Toast.makeText(this, "Geçerli bir port girin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (host.isEmpty() || port < 1 || port > 65535) {
+            Toast.makeText(this, "Adres veya port geçersiz", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        diagRunning = true;
+        diagResult.setTextColor(MUTED);
+        diagResult.setText("TCP " + port + " sınanıyor…");
+        new Thread(() -> {
+            final NetworkTools.PortResult result = NetworkTools.port(host, port);
+            runOnUiThread(() -> {
+                diagRunning = false;
+                diagResult.setTextColor(result.open ? GREEN : RED);
+                diagResult.setText(host + ":" + port + " · "
+                        + (result.open ? "AÇIK" : "KAPALI / ERİŞİLEMEDİ")
+                        + " · " + result.elapsedMs + " ms");
+            });
+        }, "yek-port").start();
+    }
+
+    // ---------------------------------------------------------------- Sensörler
+
+    private void setSensorsEnabled(boolean enabled, boolean userAction) {
+        if (enabled) {
+            if (!startSensors()) {
+                if (sensorSwitch != null) {
+                    sensorSwitch.setChecked(false);
+                }
+                showSensorsOffMessage("Bu cihazda okunabilen sensör bulunamadı.");
+            }
+        } else {
+            stopSensors();
+            if (userAction) {
+                showSensorsOffMessage();
+            }
+        }
+    }
+
+    private void restartSensorsIfNeeded() {
+        if (sensorSwitch != null && sensorSwitch.isChecked() && !sensorsRunning) {
+            startSensors();
+        }
+    }
+
+    private boolean startSensors() {
+        if (sensorManager == null || sensorList == null) {
+            return false;
+        }
+        stopSensors();
+        sensorList.removeAllViews();
+        int[] types = {
+                Sensor.TYPE_ACCELEROMETER,
+                Sensor.TYPE_GYROSCOPE,
+                Sensor.TYPE_MAGNETIC_FIELD,
+                Sensor.TYPE_LIGHT,
+                Sensor.TYPE_PROXIMITY,
+                Sensor.TYPE_PRESSURE,
+                Sensor.TYPE_RELATIVE_HUMIDITY,
+                Sensor.TYPE_AMBIENT_TEMPERATURE,
+                Sensor.TYPE_STEP_COUNTER,
+                Sensor.TYPE_ROTATION_VECTOR
+        };
+        for (int type : types) {
+            Sensor sensor = sensorManager.getDefaultSensor(type);
+            if (sensor == null || activeSensors.size() >= 10) {
+                continue;
+            }
+            activeSensors.add(sensor);
+            sensorList.addView(sensorRowView(sensor));
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+        sensorsRunning = !activeSensors.isEmpty();
+        if (!sensorsRunning) {
+            showSensorsOffMessage("Bu cihazda okunabilen sensör bulunamadı.");
+        }
+        return sensorsRunning;
+    }
+
+    private void stopSensors() {
+        if (sensorManager != null) {
+            try {
+                sensorManager.unregisterListener(this);
+            } catch (Exception ignored) {
+            }
+        }
+        sensorsRunning = false;
+        activeSensors.clear();
+        sensorValueViews.clear();
+        sensorLastUi.clear();
+    }
+
+    private void showSensorsOffMessage() {
+        showSensorsOffMessage("Canlı sensörler kapalı. Sağ üstteki anahtarı açın.");
+    }
+
+    private void showSensorsOffMessage(String message) {
+        if (sensorList == null) {
+            return;
+        }
+        sensorList.removeAllViews();
+        TextView empty = text(message, 11, MUTED, false);
+        empty.setGravity(Gravity.CENTER);
+        empty.setPadding(0, dp(12), 0, dp(6));
+        sensorList.addView(empty);
+    }
+
+    private View sensorRowView(Sensor sensor) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(7), 0, dp(7));
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        TextView title = text(sensorTypeName(sensor.getType()), 12, TEXT, true);
+        labels.addView(title);
+        TextView name = text(sensor.getName(), 9, MUTED, false);
+        name.setMaxLines(1);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(name);
+        row.addView(labels, new LinearLayout.LayoutParams(0, WRAP, 1f));
+
+        TextView value = text("—", 11, ACCENT, true);
+        value.setGravity(Gravity.END);
+        value.setMaxLines(2);
+        row.addView(value, new LinearLayout.LayoutParams(0, WRAP, 1.2f));
+        sensorValueViews.put(sensor.getType(), value);
+        return row;
+    }
+
+    private String sensorTypeName(int type) {
+        switch (type) {
+            case Sensor.TYPE_ACCELEROMETER:
+                return "İvmeölçer";
+            case Sensor.TYPE_GYROSCOPE:
+                return "Jiroskop";
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                return "Manyetometre";
+            case Sensor.TYPE_LIGHT:
+                return "Işık";
+            case Sensor.TYPE_PROXIMITY:
+                return "Yakınlık";
+            case Sensor.TYPE_PRESSURE:
+                return "Basınç";
+            case Sensor.TYPE_RELATIVE_HUMIDITY:
+                return "Nem";
+            case Sensor.TYPE_AMBIENT_TEMPERATURE:
+                return "Ortam sıcaklığı";
+            case Sensor.TYPE_STEP_COUNTER:
+                return "Adım sayacı";
+            case Sensor.TYPE_ROTATION_VECTOR:
+                return "Dönüş vektörü";
+            default:
+                return "Sensör";
+        }
+    }
+
+    private String formatSensorValue(Sensor sensor, float[] values) {
+        if (values == null || values.length == 0) {
+            return "—";
+        }
+        switch (sensor.getType()) {
+            case Sensor.TYPE_ACCELEROMETER:
+                return three(values, "m/s²", -200, 200);
+            case Sensor.TYPE_GYROSCOPE:
+                return three(values, "rad/s", -100, 100);
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                return three(values, "µT", -10000, 10000);
+            case Sensor.TYPE_ROTATION_VECTOR:
+                return three(values, "", -10, 10);
+            case Sensor.TYPE_LIGHT:
+                return one(values[0], 0, 150000, "%.0f lx");
+            case Sensor.TYPE_PROXIMITY:
+                return one(values[0], 0, 1000, "%.0f cm");
+            case Sensor.TYPE_PRESSURE:
+                return one(values[0], 0, 1200, "%.1f hPa");
+            case Sensor.TYPE_RELATIVE_HUMIDITY:
+                return one(values[0], 0, 100, "%.0f %%");
+            case Sensor.TYPE_AMBIENT_TEMPERATURE:
+                return one(values[0], -40, 125, "%.1f °C");
+            case Sensor.TYPE_STEP_COUNTER:
+                return one(values[0], 0, 100000000, "%.0f adım");
+            default:
+                return three(values, "", -1000000, 1000000);
+        }
+    }
+
+    private String one(float value, double min, double max, String format) {
+        if (!plausible(value, min, max)) {
+            return "—";
+        }
+        return String.format(Locale.getDefault(), format, value);
+    }
+
+    private String three(float[] values, String unit, double min, double max) {
+        StringBuilder builder = new StringBuilder();
+        int count = Math.min(3, values.length);
+        for (int i = 0; i < count; i++) {
+            if (!plausible(values[i], min, max)) {
+                return "—";
+            }
+            if (i > 0) {
+                builder.append(" / ");
+            }
+            builder.append(String.format(Locale.getDefault(), "%.2f", values[i]));
+        }
+        if (!unit.isEmpty()) {
+            builder.append(' ').append(unit);
+        }
+        return builder.toString();
+    }
+
+    private boolean plausible(float value, double min, double max) {
+        return !Float.isNaN(value) && !Float.isInfinite(value)
+                && value >= min && value <= max;
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (!sensorsRunning || event == null || event.sensor == null) {
+            return;
+        }
+        TextView view = sensorValueViews.get(event.sensor.getType());
+        if (view == null) {
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        Long last = sensorLastUi.get(event.sensor.getType());
+        if (last != null && now - last < 350) {
+            return;
+        }
+        sensorLastUi.put(event.sensor.getType(), now);
+        view.setText(formatSensorValue(event.sensor, event.values));
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
     // ---------------------------------------------------------------- Notlar
@@ -1245,7 +2154,7 @@ public class MainActivity extends Activity {
 
         lowSeek = addSlider(alertsCard, "Pil alt eşiği", 5, 50, alertLow, "%", value -> {
             alertLow = value;
-            prefs.edit().putInt(K_LOW, value).apply();
+            prefs.edit().putInt(AppPrefs.K_LOW, value).apply();
             if (batteryHint != null) {
                 batteryHint.setText("Uyarı eşiği: %" + alertLow + " · "
                         + (alertsEnabled ? "uyarılar açık" : "uyarılar kapalı"));
@@ -1253,11 +2162,11 @@ public class MainActivity extends Activity {
         });
         highSeek = addSlider(alertsCard, "Pil üst eşiği", 70, 100, alertHigh, "%", value -> {
             alertHigh = value;
-            prefs.edit().putInt(K_HIGH, value).apply();
+            prefs.edit().putInt(AppPrefs.K_HIGH, value).apply();
         });
         tempSeek = addSlider(alertsCard, "Sıcaklık eşiği", 35, 55, alertTemp, " °C", value -> {
             alertTemp = value;
-            prefs.edit().putInt(K_TEMP, value).apply();
+            prefs.edit().putInt(AppPrefs.K_TEMP, value).apply();
         });
 
         TextView cooldown = text("Uyarılar arasında 30 dakika bekleme vardır.", 10, MUTED, false);
@@ -1267,7 +2176,7 @@ public class MainActivity extends Activity {
 
         alertsSwitch.setOnCheckedChangeListener((button, checked) -> {
             alertsEnabled = checked;
-            prefs.edit().putBoolean(K_ALERTS, checked).apply();
+            prefs.edit().putBoolean(AppPrefs.K_ALERTS, checked).apply();
             if (checked) {
                 ensureNotifications();
             }
@@ -1276,6 +2185,74 @@ public class MainActivity extends Activity {
                         + (checked ? "uyarılar açık" : "uyarılar kapalı"));
             }
         });
+
+        LinearLayout behaviorCard = card();
+        behaviorCard.addView(cardHeader("DAVRANIŞ", null));
+        TextView refreshLabel = text("Yenileme sıklığı", 12, TEXT, false);
+        behaviorCard.addView(refreshLabel);
+        LinearLayout refreshRow = new LinearLayout(this);
+        refreshRow.setOrientation(LinearLayout.HORIZONTAL);
+        refreshRow.setPadding(0, dp(8), 0, 0);
+        final int[] refreshValues = {2, 5, 10};
+        for (int i = 0; i < refreshValues.length; i++) {
+            final int seconds = refreshValues[i];
+            TextView item = chip(seconds + " sn", refreshSeconds == seconds ? ACCENT : MUTED);
+            item.setContentDescription(seconds + " saniye yenileme");
+            item.setOnClickListener(v -> setRefreshSeconds(seconds));
+            refreshChips[i] = item;
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+            if (i > 0) {
+                lp.leftMargin = dp(6);
+            }
+            refreshRow.addView(item, lp);
+        }
+        behaviorCard.addView(refreshRow);
+
+        behaviorCard.addView(divider());
+        LinearLayout quietRow = new LinearLayout(this);
+        quietRow.setOrientation(LinearLayout.HORIZONTAL);
+        quietRow.setGravity(Gravity.CENTER_VERTICAL);
+        quietRow.setPadding(0, dp(11), 0, 0);
+        TextView quietLabel = text("Sessiz saatler", 12, TEXT, false);
+        quietRow.addView(quietLabel, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        quietSwitch = new Switch(this);
+        quietSwitch.setShowText(false);
+        quietSwitch.setChecked(quietEnabled);
+        quietSwitch.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        quietSwitch.setTrackTintList(ColorStateList.valueOf(Color.parseColor("#1E2A44")));
+        quietSwitch.setContentDescription("Sessiz saatler");
+        quietRow.addView(quietSwitch);
+        behaviorCard.addView(quietRow);
+
+        TextView quietDesc = text("Bu aralıkta pil ve sıcaklık bildirimleri gösterilmez; "
+                + "hatırlatıcılar çalışmaya devam eder.", 10, MUTED, false);
+        quietDesc.setPadding(0, dp(4), 0, 0);
+        quietDesc.setLineSpacing(dp(2), 1f);
+        behaviorCard.addView(quietDesc);
+
+        LinearLayout quietTimes = new LinearLayout(this);
+        quietTimes.setOrientation(LinearLayout.HORIZONTAL);
+        quietTimes.setPadding(0, dp(9), 0, 0);
+        quietStartButton = button("", false);
+        quietStartButton.setContentDescription("Sessiz saat başlangıcı");
+        quietStartButton.setOnClickListener(v -> pickQuietTime(true));
+        quietEndButton = button("", false);
+        quietEndButton.setContentDescription("Sessiz saat bitişi");
+        quietEndButton.setOnClickListener(v -> pickQuietTime(false));
+        quietTimes.addView(quietStartButton, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        LinearLayout.LayoutParams quietEndLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        quietEndLp.leftMargin = dp(6);
+        quietTimes.addView(quietEndButton, quietEndLp);
+        behaviorCard.addView(quietTimes);
+        updateQuietUi();
+
+        quietSwitch.setOnCheckedChangeListener((button, checked) -> {
+            quietEnabled = checked;
+            prefs.edit().putBoolean(AppPrefs.K_QUIET, checked).apply();
+            Toast.makeText(this, checked ? "Sessiz saatler açık" : "Sessiz saatler kapalı",
+                    Toast.LENGTH_SHORT).show();
+        });
+        addCard(c, behaviorCard);
 
         LinearLayout dataCard = card();
         dataCard.addView(cardHeader("VERİLER", null));
@@ -1294,7 +2271,82 @@ public class MainActivity extends Activity {
         notifLp.topMargin = dp(8);
         notifButton.setOnClickListener(v -> ensureNotifications());
         dataCard.addView(notifButton, notifLp);
+
+        dataCard.addView(divider());
+        LinearLayout diagnosticRow = new LinearLayout(this);
+        diagnosticRow.setOrientation(LinearLayout.HORIZONTAL);
+        diagnosticRow.setPadding(0, dp(10), 0, 0);
+        TextView copyDiag = button("TANILAMA KOPYALA", false);
+        copyDiag.setContentDescription("Tanılama bilgisini kopyala");
+        copyDiag.setOnClickListener(v -> copyDiagnostics());
+        TextView shareDiag = button("PAYLAŞ", false);
+        shareDiag.setContentDescription("Tanılama bilgisini paylaş");
+        shareDiag.setOnClickListener(v -> shareDiagnostics());
+        diagnosticRow.addView(copyDiag, new LinearLayout.LayoutParams(0, WRAP, 1.5f));
+        LinearLayout.LayoutParams shareDiagLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        shareDiagLp.leftMargin = dp(6);
+        diagnosticRow.addView(shareDiag, shareDiagLp);
+        dataCard.addView(diagnosticRow);
+
+        LinearLayout backupRow = new LinearLayout(this);
+        backupRow.setOrientation(LinearLayout.HORIZONTAL);
+        backupRow.setPadding(0, dp(8), 0, 0);
+        TextView exportBackup = button("YEDEKLE", true);
+        exportBackup.setContentDescription("Yedeği dışa aktar");
+        exportBackup.setOnClickListener(v -> exportBackup());
+        TextView importBackup = button("GERİ YÜKLE", false);
+        importBackup.setContentDescription("Yedekten geri yükle");
+        importBackup.setOnClickListener(v -> importBackup());
+        backupRow.addView(exportBackup, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        LinearLayout.LayoutParams importLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        importLp.leftMargin = dp(6);
+        backupRow.addView(importBackup, importLp);
+        dataCard.addView(backupRow);
+
+        backupStatus = text("Yedek; ayarlar, notlar, hatırlatıcılar ve sunucu uçlarını "
+                + "tek JSON dosyasında toplar. Dosya cihazınızda kalır.", 10, MUTED, false);
+        backupStatus.setPadding(0, dp(9), 0, 0);
+        backupStatus.setLineSpacing(dp(2), 1f);
+        dataCard.addView(backupStatus);
         addCard(c, dataCard);
+
+        LinearLayout deviceCard = card();
+        deviceCard.addView(cardHeader("CİHAZ BİLGİSİ", null));
+        DeviceStats.Snapshot info = DeviceStats.read(this);
+        TextView modelRow = rowValue();
+        addInfoRow(deviceCard, "Model", modelRow);
+        modelRow.setText(deviceName(info));
+        TextView androidRow = rowValue();
+        addInfoRow(deviceCard, "Android", androidRow);
+        androidRow.setText(info.android + " · API " + info.sdk);
+        TextView patchRow = rowValue();
+        addInfoRow(deviceCard, "Güvenlik yaması", patchRow);
+        patchRow.setText(info.securityPatch);
+        TextView kernelRow = rowValue();
+        addInfoRow(deviceCard, "Çekirdek", kernelRow);
+        kernelRow.setText(info.kernel);
+        TextView abiRow = rowValue();
+        addInfoRow(deviceCard, "ABI", abiRow);
+        abiRow.setText(info.abi);
+        TextView screenRow = rowValue();
+        addInfoRow(deviceCard, "Ekran", screenRow);
+        screenRow.setText(info.screenWidth > 0
+                ? info.screenWidth + " × " + info.screenHeight + " · " + info.screenDpi + " dpi"
+                : "—");
+        TextView refreshRateRow = rowValue();
+        addInfoRow(deviceCard, "Yenileme", refreshRateRow);
+        refreshRateRow.setText(info.refreshRate > 0
+                ? String.format(Locale.getDefault(), "%.0f Hz", info.refreshRate) : "—");
+        TextView socRow = rowValue();
+        addInfoRow(deviceCard, "Yonga", socRow);
+        socRow.setText(info.soc == null || info.soc.isEmpty() ? "—" : info.soc);
+        TextView ramRow = rowValue();
+        addInfoRow(deviceCard, "RAM", ramRow);
+        ramRow.setText(DeviceStats.gb(info.ramTotal));
+        TextView storageRow = rowValue();
+        addInfoRow(deviceCard, "Depolama", storageRow);
+        storageRow.setText(DeviceStats.gb(info.storageTotal));
+        addCard(c, deviceCard);
 
         LinearLayout aboutCard = card();
         LinearLayout brandRow = new LinearLayout(this);
@@ -1321,8 +2373,9 @@ public class MainActivity extends Activity {
         storeLp.topMargin = dp(12);
         aboutCard.addView(storeChip, storeLp);
 
-        TextView aboutText = text("Masaüstü YEK Panel'in mobil yoldaşı. Pil, bellek, "
-                + "depolama, işlemci ve ağ durumunu tek ekranda toplar.", 11, MUTED, false);
+        TextView aboutText = text("Mobil sistem paneli: pil, bellek, depolama, işlemci ve ağ "
+                + "durumu; sunucu izleme, hız testi, DNS/port tanılama, canlı sensörler, "
+                + "notlar, hatırlatıcılar ve cihaz içi yedekleme.", 11, MUTED, false);
         aboutText.setPadding(0, dp(12), 0, dp(4));
         aboutText.setLineSpacing(dp(3), 1f);
         aboutCard.addView(aboutText);
@@ -1387,6 +2440,211 @@ public class MainActivity extends Activity {
         return seek;
     }
 
+    private void setRefreshSeconds(int seconds) {
+        refreshSeconds = seconds;
+        prefs.edit().putInt(AppPrefs.K_REFRESH, seconds).apply();
+        int[] values = {2, 5, 10};
+        for (int i = 0; i < refreshChips.length; i++) {
+            if (refreshChips[i] != null) {
+                applyChip(refreshChips[i], values[i] + " sn",
+                        refreshSeconds == values[i] ? ACCENT : MUTED);
+            }
+        }
+        handler.removeCallbacks(ticker);
+        handler.post(ticker);
+        Toast.makeText(this, "Yenileme: " + seconds + " saniye", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateQuietUi() {
+        if (quietStartButton != null) {
+            quietStartButton.setText("BAŞLANGIÇ · " + fmtMinutes(quietStart));
+        }
+        if (quietEndButton != null) {
+            quietEndButton.setText("BİTİŞ · " + fmtMinutes(quietEnd));
+        }
+    }
+
+    private void pickQuietTime(boolean start) {
+        int minutes = start ? quietStart : quietEnd;
+        new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+            int value = hourOfDay * 60 + minute;
+            if (start) {
+                quietStart = value;
+            } else {
+                quietEnd = value;
+            }
+            prefs.edit()
+                    .putInt(start ? AppPrefs.K_QUIET_START : AppPrefs.K_QUIET_END, value)
+                    .apply();
+            updateQuietUi();
+        }, minutes / 60, minutes % 60, true).show();
+    }
+
+    private boolean isQuietNow() {
+        if (!quietEnabled) {
+            return false;
+        }
+        Calendar calendar = Calendar.getInstance();
+        int now = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
+        if (quietStart == quietEnd) {
+            return false;
+        }
+        if (quietStart < quietEnd) {
+            return now >= quietStart && now < quietEnd;
+        }
+        return now >= quietStart || now < quietEnd;
+    }
+
+    private String fmtMinutes(int minutes) {
+        return fmtTime((minutes / 60) % 24, minutes % 60);
+    }
+
+    private void exportBackup() {
+        pendingExport = SettingsBackup.export(this);
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "yek-panel-yedek.json");
+        startActivityForResult(intent, REQ_EXPORT_BACKUP);
+    }
+
+    private void importBackup() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                "application/json", "text/plain", "application/octet-stream"});
+        startActivityForResult(intent, REQ_IMPORT_BACKUP);
+    }
+
+    private void readRestoreFile(Uri uri) {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                getContentResolver().openInputStream(uri), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null && builder.length() < 4_000_000) {
+                builder.append(line).append('\n');
+            }
+        } catch (Exception error) {
+            Toast.makeText(this, "Yedek dosyası okunamadı", Toast.LENGTH_LONG).show();
+            return;
+        }
+        pendingRestoreJson = builder.toString();
+        new AlertDialog.Builder(this)
+                .setTitle("Yedekten geri yüklensin mi?")
+                .setMessage("Mevcut ayarlar, notlar, hatırlatıcılar ve sunucu uçları "
+                        + "yedekteki verilerle değiştirilecek.")
+                .setPositiveButton("Geri yükle", (dialog, which) -> applyRestore())
+                .setNegativeButton("Vazgeç", (dialog, which) -> pendingRestoreJson = "")
+                .show();
+    }
+
+    private void applyRestore() {
+        try {
+            SettingsBackup.Summary summary = SettingsBackup.importData(this, pendingRestoreJson);
+            loadAlertSettings();
+            loadBehaviorSettings();
+            rebuildSettingsPage();
+            refreshNotes();
+            refreshReminders();
+            refreshEndpointManagement();
+            refreshServerPanel();
+            refreshPanel();
+            Toast.makeText(this, "Geri yüklendi: " + summary.notes + " not · "
+                    + summary.reminders + " hatırlatıcı · " + summary.endpoints + " sunucu",
+                    Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            String message = error.getMessage();
+            Toast.makeText(this, "Geri yükleme başarısız"
+                    + (message == null || message.isEmpty() ? "" : ": " + message),
+                    Toast.LENGTH_LONG).show();
+        } finally {
+            pendingRestoreJson = "";
+        }
+    }
+
+    private void rebuildSettingsPage() {
+        if (pageHost == null) {
+            return;
+        }
+        if (settingsScroll != null) {
+            pageHost.removeView(settingsScroll);
+        }
+        settingsScroll = buildSettingsPage();
+        pageHost.addView(settingsScroll, new FrameLayout.LayoutParams(MATCH, MATCH));
+        showPage(currentPage);
+    }
+
+    private String buildDiagnostics() {
+        DeviceStats.Snapshot st = DeviceStats.read(this);
+        StringBuilder builder = new StringBuilder("YEK PANEL ANDROID · TANILAMA\n");
+        builder.append("Tarih: ")
+                .append(new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                        .format(new Date())).append('\n');
+        builder.append("Cihaz: ").append(deviceName(st)).append('\n');
+        builder.append("Android: ").append(st.android).append(" · API ").append(st.sdk)
+                .append(" · yama ").append(st.securityPatch).append('\n');
+        builder.append("Pil: %").append(st.batteryPercent)
+                .append(" · ").append(st.batteryHealth)
+                .append(" · ").append(String.format(Locale.getDefault(), "%.1f °C",
+                        st.batteryTempC));
+        if (st.batteryVoltageMv > 0) {
+            builder.append(" · ").append(String.format(Locale.getDefault(), "%.2f V",
+                    st.batteryVoltageMv / 1000.0));
+        }
+        builder.append(" · kaynak ").append(st.powerSource).append('\n');
+        builder.append("CPU: ").append(st.cores).append(" çekirdek · ")
+                .append(st.cpuLoad >= 0 ? "%" + st.cpuLoad : "yük kısıtlı").append('\n');
+        builder.append("RAM: %").append(st.ramPercent).append(" · ")
+                .append(DeviceStats.gb(st.ramTotal)).append('\n');
+        builder.append("Depolama: %").append(st.storagePercent).append(" · ")
+                .append(DeviceStats.gb(st.storageFree)).append(" boş\n");
+        builder.append("Ağ: ").append(st.connType).append(" · ").append(st.localIp)
+                .append(" · geçit ").append(st.gateway).append(" · DNS ").append(st.dns)
+                .append('\n');
+        builder.append("Sunucular:\n");
+        List<EndpointStore.Endpoint> endpoints = endpointStore.all();
+        if (endpoints.isEmpty()) {
+            builder.append("  —\n");
+        } else {
+            for (EndpointStore.Endpoint endpoint : endpoints) {
+                EndpointChecker.Result result = serverResults.get(endpoint.id);
+                builder.append("  ").append(endpoint.name).append(" · ")
+                        .append(endpoint.url).append(" · ")
+                        .append(result == null ? "kontrol edilmedi"
+                                : EndpointChecker.codeLabel(result) + " · "
+                                + EndpointChecker.latencyLabel(result))
+                        .append('\n');
+            }
+        }
+        builder.append("Not: ").append(noteStore.all().size())
+                .append(" · Hatırlatıcı: ").append(reminderStore.all().size())
+                .append(" · Sunucu: ").append(endpoints.size()).append('\n');
+        return builder.toString();
+    }
+
+    private void copyDiagnostics() {
+        copyText("Tanılama", buildDiagnostics());
+    }
+
+    private void shareDiagnostics() {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_SUBJECT, "YEK Panel tanılama");
+        send.putExtra(Intent.EXTRA_TEXT, buildDiagnostics());
+        startActivity(Intent.createChooser(send, "Tanılamayı paylaş"));
+    }
+
+    private void copyText(String label, String value) {
+        ClipboardManager manager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (manager == null) {
+            Toast.makeText(this, "Pano kullanılamıyor", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        manager.setPrimaryClip(ClipData.newPlainText(label, value));
+        Toast.makeText(this, label + " kopyalandı", Toast.LENGTH_SHORT).show();
+    }
+
     private void ensureNotifications() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -1441,20 +2699,31 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if ((requestCode == REQ_EXPORT_TXT || requestCode == REQ_EXPORT_MD)
-                && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            try (OutputStream raw = getContentResolver().openOutputStream(uri, "wt")) {
-                if (raw == null) {
-                    throw new IllegalStateException("Çıktı akışı açılamadı");
-                }
-                try (OutputStreamWriter writer = new OutputStreamWriter(raw, "UTF-8")) {
-                    writer.write(pendingExport);
-                }
-                Toast.makeText(this, "Notlar dışa aktarıldı", Toast.LENGTH_LONG).show();
-            } catch (Exception error) {
-                Toast.makeText(this, "Dışa aktarma başarısız", Toast.LENGTH_LONG).show();
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        if (requestCode == REQ_IMPORT_BACKUP) {
+            readRestoreFile(uri);
+            return;
+        }
+        if (requestCode != REQ_EXPORT_TXT && requestCode != REQ_EXPORT_MD
+                && requestCode != REQ_EXPORT_BACKUP) {
+            return;
+        }
+        try (OutputStream raw = getContentResolver().openOutputStream(uri, "wt")) {
+            if (raw == null) {
+                throw new IllegalStateException("Çıktı akışı açılamadı");
             }
+            try (OutputStreamWriter writer = new OutputStreamWriter(raw, StandardCharsets.UTF_8)) {
+                writer.write(pendingExport);
+            }
+            Toast.makeText(this, requestCode == REQ_EXPORT_BACKUP
+                    ? "Yedek dışa aktarıldı" : "Notlar dışa aktarıldı", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            Toast.makeText(this, requestCode == REQ_EXPORT_BACKUP
+                    ? "Yedek dışa aktarılamadı" : "Dışa aktarma başarısız",
+                    Toast.LENGTH_LONG).show();
         }
     }
 
