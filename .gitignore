@@ -19,3 +19,15 @@ rapor-*.csv
 # Geçici dosyalar
 *.log
 *.tmp
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/build/
+android/.idea/
+android/*.iml
+android/release/
+*.apk
+*.aab
+*.jks
+*.keystore

@@ -48,6 +48,23 @@ public sealed class AppSettings
     public string LatestReleaseUrl { get; set; } = "";
     public string LatestReleaseName { get; set; } = "";
 
+    public bool CpuAlertEnabled { get; set; } = true;
+    public int CpuAlertC { get; set; } = 85;
+    public bool RamAlertEnabled { get; set; } = true;
+    public int RamAlertPercent { get; set; } = 90;
+    public bool SoundAlerts { get; set; } = false;
+
+    public bool WebhookEnabled { get; set; } = false;
+    public string DiscordWebhookUrl { get; set; } = "";
+    public string TelegramBotToken { get; set; } = "";
+    public string TelegramChatId { get; set; } = "";
+
+    public bool ClipboardHistoryEnabled { get; set; } = true;
+    public string CardOrder { get; set; } = "computer,connection,server";
+    public string HiddenCards { get; set; } = "";
+    public List<ScriptEntry> Scripts { get; set; } = new();
+    public List<ScheduledTask> ScheduledTasks { get; set; } = new();
+
     public static List<EndpointConfig> DefaultEndpoints() => new()
     {
         new EndpointConfig { Name = "Web Sitesi", Url = "" },
@@ -149,6 +166,16 @@ public static class SettingsStore
         settings.LatestReleaseUrl = Trim(settings.LatestReleaseUrl, 500);
         settings.LatestReleaseName = Trim(settings.LatestReleaseName, 200);
 
+        settings.CpuAlertC = Math.Clamp(settings.CpuAlertC, 50, 110);
+        settings.RamAlertPercent = Math.Clamp(settings.RamAlertPercent, 50, 100);
+        settings.DiscordWebhookUrl = Trim(settings.DiscordWebhookUrl, 500);
+        settings.TelegramBotToken = Trim(settings.TelegramBotToken, 200);
+        settings.TelegramChatId = Trim(settings.TelegramChatId, 60);
+        settings.CardOrder = NormalizeCardOrder(settings.CardOrder);
+        settings.HiddenCards = NormalizeHiddenCards(settings.HiddenCards);
+        NormalizeScripts(settings);
+        NormalizeScheduledTasks(settings);
+
         var defaults = AppSettings.DefaultEndpoints();
         if (settings.Endpoints == null)
             settings.Endpoints = defaults;
@@ -175,6 +202,79 @@ public static class SettingsStore
     {
         var text = (value ?? "").Trim();
         return text.Length > maxLength ? text[..maxLength] : text;
+    }
+
+    private static readonly string[] CardKeys = { "computer", "connection", "server" };
+
+    private static string NormalizeCardOrder(string? value)
+    {
+        var keys = (value ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(key => key.ToLowerInvariant())
+            .Where(key => CardKeys.Contains(key))
+            .Distinct()
+            .ToList();
+
+        foreach (var key in CardKeys)
+        {
+            if (!keys.Contains(key))
+                keys.Add(key);
+        }
+
+        return string.Join(",", keys);
+    }
+
+    private static string NormalizeHiddenCards(string? value)
+    {
+        var keys = (value ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(key => key.ToLowerInvariant())
+            .Where(key => CardKeys.Contains(key))
+            .Distinct();
+
+        return string.Join(",", keys);
+    }
+
+    private static void NormalizeScripts(AppSettings settings)
+    {
+        settings.Scripts ??= new List<ScriptEntry>();
+        var list = settings.Scripts
+            .Where(script => script != null)
+            .Take(20)
+            .ToList();
+
+        foreach (var script in list)
+        {
+            script.Name = Trim(script.Name, 60);
+            script.Path = Trim(script.Path, 500);
+            script.Arguments = Trim(script.Arguments, 300);
+            if (script.Name.Length == 0)
+                script.Name = System.IO.Path.GetFileNameWithoutExtension(script.Path);
+        }
+
+        settings.Scripts = list;
+    }
+
+    private static void NormalizeScheduledTasks(AppSettings settings)
+    {
+        settings.ScheduledTasks ??= new List<ScheduledTask>();
+        var list = settings.ScheduledTasks
+            .Where(task => task != null)
+            .Take(30)
+            .ToList();
+
+        foreach (var task in list)
+        {
+            task.Time = NormalizeClock(task.Time, "09:00");
+            task.Action = ScheduledTask.Actions.Contains(task.Action) ? task.Action : "notify";
+            task.Target = Trim(task.Target, 500);
+            task.Name = Trim(task.Name, 60);
+            if (task.Name.Length == 0)
+                task.Name = $"{ScheduledTask.ActionLabel(task.Action)} {task.Time}";
+            task.LastRunDate = Trim(task.LastRunDate, 10);
+        }
+
+        settings.ScheduledTasks = list;
     }
 
     private static string NormalizeClock(string? value, string fallback)

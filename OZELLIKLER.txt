@@ -1,8 +1,8 @@
-﻿YEK PANEL v2.2 · 116 ÖZELLİK
+﻿YEK PANEL v2.3 · 134 ÖZELLİK
 ============================================================
 
-Toplam 116 özellik: 10'u v2.2'de yeni, 6'sı v2.1'de, 100'ü önceki sürümlerden geliyor.
-[YENİ v2.2] = bu sürümde eklendi   [YENİ v2.1] = v2.1'de eklendi
+Toplam 134 özellik: 18'i v2.3'te yeni, 10'u v2.2'de, 6'sı v2.1'de, 100'ü önceki sürümlerden geliyor.
+[YENİ v2.3] = bu sürümde eklendi   [YENİ v2.2] = v2.2'de eklendi
 [YENİ v2.0] = v2.0'da eklendi   [MEVCUT] = daha önce vardı
 
 GÖRÜNÜM & PENCERE
@@ -143,10 +143,29 @@ v2.2 YENİ ÖZELLİKLER
 115) Arayüz ve arka plan hatalarında uygulamanın çalışmaya devam etmesi — [YENİ v2.2]
 116) Sürüm numarasının tek kaynaktan gelmesi; başlık ve Hakkında etiketlerinin dinamik olması — [YENİ v2.2]
 
+v2.3 YENİ ÖZELLİKLER
+117) En yoğun 5 işlemi tek tıkla kapatma; sistem süreçleri korunur — [YENİ v2.3]
+118) Ayarlanabilir CPU sıcaklık eşiği uyarısı — [YENİ v2.3]
+119) Ayarlanabilir RAM kullanım eşiği uyarısı — [YENİ v2.3]
+120) Uyarılarda isteğe bağlı sesli bildirim — [YENİ v2.3]
+121) Discord webhook bildirimi ve test düğmesi — [YENİ v2.3]
+122) Telegram bot webhook bildirimi ve test düğmesi — [YENİ v2.3]
+123) GPU canlı kullanım yüzdesi — [YENİ v2.3]
+124) GPU VRAM kullanılan/toplam bellek göstergesi — [YENİ v2.3]
+125) Betik merkezi: PowerShell, Python, BAT ve PS1 çalıştırma — [YENİ v2.3]
+126) Betikleri Ctrl+Alt+1–9 kısayoluyla başlatma — [YENİ v2.3]
+127) Zamanlanmış görevler: betik, ping, uygulama kapatma ve bildirim — [YENİ v2.3]
+128) Etkin bağlantı listesi: uygulama, uzak IP ve port eşleşmesi — [YENİ v2.3]
+129) Tek tıkla DNS değiştirme: Cloudflare, Google, OpenDNS ve otomatik — [YENİ v2.3]
+130) Pano geçmişi: son 15 metni görüntüleyip tek tıkla geri kopyalama — [YENİ v2.3]
+131) Çoklu not yönetimi: ekleme, düzenleme ve silme — [YENİ v2.3]
+132) Notları TXT veya Markdown olarak dışa aktarma — [YENİ v2.3]
+133) Varsayılan ses çıkışı ve mikrofon cihazını değiştirme — [YENİ v2.3]
+134) Ana ekran kartlarını sıralama ve gizleme — [YENİ v2.3]
+
 ------------------------------------------------------------
-Not: v2.2'nin ana yenilikleri tek örnek koruması, GitHub
-güncelleme kontrolü ve hata günlüğüdür. v2.1'den ana ekran
-bağlantı kartı, IP kopyalama ve değişim bildirimi; v2.0'dan
-7/30 günlük rapor, kesintiler, araç merkezi, güvenlik/SSL
-uyarısı ve bakım modu gelir. Veriler %AppData%\YekPanel
-klasöründe JSON/CSV olarak tutulur.
+Not: v2.3'ün ana yenilikleri işlem kapatma, GPU/VRAM izleme,
+eşik uyarıları, betik ve zamanlanmış görev merkezi, webhook
+bildirimleri, DNS değiştirici, pano geçmişi, notlar ve ses
+cihazı seçimidir. Veriler %AppData%\YekPanel klasöründe
+JSON/CSV olarak tutulur.

@@ -1,4 +1,4 @@
-﻿YEK PANEL v2.2
+﻿YEK PANEL v2.3
 ==============
 
 Ne yapar?
@@ -16,6 +16,21 @@ Ne yapar?
 - Sunucu sorunlarında tepsi bildirimi gösterir; sessiz saatler ve günlük özet desteklenir.
 - Uygulama iki kez açılmaz; ikinci denemede mevcut pencere öne gelir.
 - GitHub üzerinden yeni sürüm olup olmadığını kontrol eder; isterseniz kapatabilirsiniz.
+
+v2.3 yenilikleri (18 yeni özellik)
+- En yoğun 5 işlem artık tek tıkla kapatılabilir; sistem süreçleri korunur.
+- CPU sıcaklığı ve RAM kullanımı için ayarlanabilir eşik uyarıları; isteğe bağlı ses.
+- GPU canlı kullanım yüzdesi ve VRAM (kullanılan/toplam) göstergesi.
+- Discord ve Telegram webhook bildirimleri; test düğmeleriyle doğrulama.
+- Betik merkezi: PowerShell, Python, BAT ve PS1 dosyalarını arka planda çalıştırma;
+  Ctrl+Alt+1–9 ile hızlı başlatma.
+- Zamanlanmış görevler: belirli saatte betik, ping, uygulama kapatma veya bildirim.
+- Ağ sekmesi: hangi uygulamanın hangi adrese bağlandığını gösteren etkin bağlantı listesi.
+- Tek tıkla DNS değiştirme: Cloudflare, Google, OpenDNS ve otomatik.
+- Pano geçmişi: son 15 metni saklar, tek tıkla geri kopyalar.
+- Çoklu not yönetimi; notları TXT veya Markdown olarak dışa aktarma.
+- Varsayılan ses çıkışı ve mikrofon cihazını değiştirme.
+- Ana ekran kartlarını yukarı/aşağı taşıma veya gizleme.
 
 v2.2 yenilikleri (10 yeni özellik)
 - Tek örnek koruması: YEK Panel zaten açıksa ikinci pencere açılmaz,
@@ -88,7 +103,7 @@ v2.0 yenilikleri (38 yeni özellik · v2.1 ve v2.2'de korunuyor)
   24 saatlik çevrimiçi oranı, hava durumu detay kartı, hatırlanan pencere konumu.
 
 Kurulum (önerilen)
-- "YEK-Panel-Setup-2.2.0.exe" dosyasını çalıştırın.
+- "YEK-Panel-Setup-2.3.0.exe" dosyasını çalıştırın.
 - Kurulum yalnızca sizin kullanıcınız için yapılır; yönetici izni gerekmez.
 - Varsayılan konum: %LocalAppData%\Programs\YekPanel
 - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
@@ -100,7 +115,7 @@ Kurulum (önerilen)
   %AppData%\YekPanel altında kalır. Tamamen temizlemek için bu klasörü elle silin.
 
 Taşınabilir sürüm
-- "YEK-Panel-2.2.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
+- "YEK-Panel-2.3.0-portable.exe" dosyasına çift tıklayın. Kurulum gerekmez, tek dosyadır.
 - Masaüstündeki "YEK Panel" kısayolu da aynı uygulamayı açar.
 
 İlk çalıştırma

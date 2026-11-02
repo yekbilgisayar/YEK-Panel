@@ -2,7 +2,7 @@
 ; Derlemek için: ISCC.exe YekPanel.iss
 
 #define AppName "YEK Panel"
-#define AppVersion "2.2.0"
+#define AppVersion "2.3.0"
 #define AppPublisher "YEK BİLGİSAYAR"
 #define AppExeName "YekPanel.exe"
 #define SourceExe "..\YEK-Panel.exe"
@@ -14,11 +14,11 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppCopyright=YEK BİLGİSAYAR
-VersionInfoVersion=2.2.0.0
+VersionInfoVersion=2.3.0.0
 VersionInfoCompany=YEK BİLGİSAYAR
 VersionInfoDescription=YEK Panel Kurulum
 VersionInfoProductName=YEK Panel
-VersionInfoProductVersion=2.2.0
+VersionInfoProductVersion=2.3.0
 DefaultDirName={localappdata}\Programs\YekPanel
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

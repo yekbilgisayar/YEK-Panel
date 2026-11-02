@@ -384,8 +384,8 @@
 
             <!-- İçerik -->
             <ScrollViewer x:Name="ContentScroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel>
-                    <Border Style="{StaticResource Card}" Margin="20,0,20,12">
+                <StackPanel x:Name="MainCardsPanel">
+                    <Border x:Name="ComputerCard" Style="{StaticResource Card}" Margin="20,0,20,12">
                         <StackPanel>
                             <Grid>
                                 <TextBlock Text="BİLGİSAYAR" Style="{StaticResource CardTitle}" />
@@ -479,6 +479,19 @@
                                            ToolTip="CPU / GPU sıcaklıkları. Sensörler yönetici izni isteyebilir." />
                             </Grid>
 
+                            <Grid Margin="0,7,0,0" ToolTip="Anlık GPU kullanımı">
+                                <TextBlock Text="GPU" Style="{StaticResource MetricLabel}" />
+                                <TextBlock x:Name="GpuValue" Text="—" Style="{StaticResource MetricValue}"
+                                           AutomationProperties.AutomationId="GpuLoad" />
+                            </Grid>
+                            <ProgressBar x:Name="GpuBar" Style="{StaticResource MetricBar}" Minimum="0" Maximum="100"
+                                         Value="0" Margin="0,5,0,0" />
+                            <Grid Margin="0,5,0,0" ToolTip="Kullanılan / toplam ekran kartı belleği">
+                                <TextBlock Text="VRAM" Style="{StaticResource MetricLabel}" />
+                                <TextBlock x:Name="VramValue" Text="—" Style="{StaticResource MetricValue}"
+                                           AutomationProperties.AutomationId="GpuVram" />
+                            </Grid>
+
                             <Grid Margin="0,7,0,0">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="HIZ TESTİ" Style="{StaticResource MetricLabel}" />
@@ -495,14 +508,14 @@
 
                             <Grid>
                                 <TextBlock Text="SÜREÇLER" Style="{StaticResource CardTitle}" />
-                                <TextBlock Text="EN ÇOK BELLEK" Style="{StaticResource CardHint}" HorizontalAlignment="Right" />
+                                <TextBlock Text="EN YOĞUN 5 · KAPAT" Style="{StaticResource CardHint}" HorizontalAlignment="Right" />
                             </Grid>
                             <StackPanel x:Name="ProcessesList" Margin="0,6,0,0" />
                         </StackPanel>
                     </Border>
 
                     <!-- Sistem & bağlantı kartı -->
-                    <Border Style="{StaticResource Card}" Margin="20,0,20,12">
+                    <Border x:Name="ConnectionCard" Style="{StaticResource Card}" Margin="20,0,20,12">
                         <StackPanel>
                             <Grid>
                                 <TextBlock Text="SİSTEM &amp; BAĞLANTI" Style="{StaticResource CardTitle}" />
@@ -582,7 +595,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource Card}" Margin="20,0,20,12">
+                    <Border x:Name="ServerCard" Style="{StaticResource Card}" Margin="20,0,20,12">
                         <StackPanel>
                             <Grid>
                                 <TextBlock Text="SUNUCU" Style="{StaticResource CardTitle}" />
@@ -808,6 +821,31 @@
                                     <TextBox x:Name="SummaryTimeBox" Style="{StaticResource InputBox}" Width="62"
                                              HorizontalAlignment="Right" FontSize="10.5" Padding="6,3" TextAlignment="Center" />
                                 </Grid>
+
+                                <TextBlock Text="DONANIM UYARILARI" Style="{StaticResource FieldLabel}" Margin="2,4,0,3" />
+                                <Grid Margin="0,0,0,6">
+                                    <CheckBox x:Name="CpuAlertCheck" Style="{StaticResource DarkCheck}"
+                                              Content="CPU sıcaklığı" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <TextBox x:Name="CpuAlertBox" Style="{StaticResource InputBox}" Width="48"
+                                                 FontSize="10.5" Padding="6,3" TextAlignment="Center" />
+                                        <TextBlock Text="°C" Foreground="#7396BE" Margin="5,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <CheckBox x:Name="RamAlertCheck" Style="{StaticResource DarkCheck}"
+                                              Content="RAM kullanımı" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <TextBox x:Name="RamAlertBox" Style="{StaticResource InputBox}" Width="48"
+                                                 FontSize="10.5" Padding="6,3" TextAlignment="Center" />
+                                        <TextBlock Text="%" Foreground="#7396BE" Margin="5,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <CheckBox x:Name="SoundAlertsCheck" Style="{StaticResource DarkCheck}"
+                                          Content="Kritik uyarılarda ses çal" Margin="0,0,0,6" />
+                                <CheckBox x:Name="ClipboardHistoryCheck" Style="{StaticResource DarkCheck}"
+                                          Content="Pano geçmişini tut (son 15 metin)" Margin="0,0,0,6"
+                                          ToolTip="Pano metinleri yalnızca bellekte tutulur." />
                                 <TextBlock Text="BAKIM MODU (bildirim ve rapor dışı)" FontSize="8.5" Foreground="#4F6C8F" Margin="2,2,0,4" />
                                 <UniformGrid Columns="2" Margin="0,0,0,6">
                                     <CheckBox x:Name="MaintenanceSite" Style="{StaticResource DarkCheck}" Content="Web" FontSize="11" Margin="0,0,0,4" />
@@ -815,6 +853,83 @@
                                     <CheckBox x:Name="MaintenanceHa" Style="{StaticResource DarkCheck}" Content="Home Assistant" FontSize="11" />
                                     <CheckBox x:Name="MaintenanceCloud" Style="{StaticResource DarkCheck}" Content="Nextcloud" FontSize="11" />
                                 </UniformGrid>
+
+                                <TextBlock Text="WEBHOOK (DISCORD / TELEGRAM)" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,2,0,6">
+                                    <StackPanel>
+                                        <CheckBox x:Name="WebhookEnabledCheck" Style="{StaticResource DarkCheck}"
+                                                  Content="Olaylarda webhook gönder" FontSize="11" Margin="0,0,0,6" />
+                                        <TextBlock Text="DISCORD WEBHOOK ADRESİ" Style="{StaticResource FieldLabel}" />
+                                        <TextBox x:Name="DiscordUrlBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 Margin="0,0,0,6" />
+                                        <TextBlock Text="TELEGRAM BOT TOKEN" Style="{StaticResource FieldLabel}" />
+                                        <TextBox x:Name="TelegramTokenBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 Margin="0,0,0,6" />
+                                        <TextBlock Text="TELEGRAM CHAT ID" Style="{StaticResource FieldLabel}" />
+                                        <TextBox x:Name="TelegramChatIdBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 Margin="0,0,0,6" />
+                                        <Button x:Name="TestWebhookButton" Content="TEST GÖNDER"
+                                                Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
+                                                HorizontalAlignment="Left" Click="TestWebhook_Click"
+                                                AutomationProperties.Name="Webhook test gönder"
+                                                AutomationProperties.AutomationId="WebhookTest" />
+                                        <TextBlock x:Name="WebhookStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
+                                        <TextBlock Text="Adres ve token yalnızca bu bilgisayardaki settings.json dosyasında tutulur."
+                                                   FontSize="8.5" Foreground="#4F6C8F" TextWrapping="Wrap" Margin="1,4,0,0" />
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="ANA EKRAN DÜZENİ" Style="{StaticResource FieldLabel}" Margin="2,8,0,3" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,2,0,6">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,5">
+                                            <CheckBox x:Name="ShowComputerCheck" Style="{StaticResource DarkCheck}"
+                                                      Content="Bilgisayar" FontSize="11" VerticalAlignment="Center"
+                                                      Checked="CardVisibility_Changed" Unchecked="CardVisibility_Changed" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="↑" Tag="computer" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Click="CardUp_Click"
+                                                        AutomationProperties.Name="Bilgisayar kartını yukarı taşı" />
+                                                <Button Content="↓" Tag="computer" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Margin="4,0,0,0" Click="CardDown_Click"
+                                                        AutomationProperties.Name="Bilgisayar kartını aşağı taşı" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,5">
+                                            <CheckBox x:Name="ShowConnectionCheck" Style="{StaticResource DarkCheck}"
+                                                      Content="Sistem ve bağlantı" FontSize="11" VerticalAlignment="Center"
+                                                      Checked="CardVisibility_Changed" Unchecked="CardVisibility_Changed" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="↑" Tag="connection" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Click="CardUp_Click"
+                                                        AutomationProperties.Name="Bağlantı kartını yukarı taşı" />
+                                                <Button Content="↓" Tag="connection" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Margin="4,0,0,0" Click="CardDown_Click"
+                                                        AutomationProperties.Name="Bağlantı kartını aşağı taşı" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid>
+                                            <CheckBox x:Name="ShowServerCheck" Style="{StaticResource DarkCheck}"
+                                                      Content="Sunucular" FontSize="11" VerticalAlignment="Center"
+                                                      Checked="CardVisibility_Changed" Unchecked="CardVisibility_Changed" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="↑" Tag="server" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Click="CardUp_Click"
+                                                        AutomationProperties.Name="Sunucu kartını yukarı taşı" />
+                                                <Button Content="↓" Tag="server" Style="{StaticResource GhostButton}"
+                                                        FontSize="10" Padding="8,3" Margin="4,0,0,0" Click="CardDown_Click"
+                                                        AutomationProperties.Name="Sunucu kartını aşağı taşı" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock x:Name="CardOrderPreview" Text="Sıra: Bilgisayar → Sistem ve bağlantı → Sunucular"
+                                                   FontSize="8.5" Foreground="#7396BE" TextWrapping="Wrap" Margin="1,6,0,0" />
+                                        <TextBlock Text="Sıra ve görünürlük KAYDET ile uygulanır."
+                                                   FontSize="8.5" Foreground="#4F6C8F" Margin="1,2,0,0" />
+                                    </StackPanel>
+                                </Border>
 
                                 <TextBlock Text="HAKKINDA &amp; GÜNCELLEME" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />
                                 <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
@@ -866,8 +981,10 @@
                         </ScrollViewer>
 
                         <Grid Grid.Row="2" Margin="0,12,0,0">
-                            <Button Content="VAZGEÇ" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Click="CancelSettings_Click" />
-                            <Button Content="KAYDET" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SaveSettings_Click" />
+                            <Button Content="VAZGEÇ" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Click="CancelSettings_Click"
+                                    AutomationProperties.AutomationId="SettingsCancel" />
+                            <Button Content="KAYDET" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SaveSettings_Click"
+                                    AutomationProperties.AutomationId="SettingsSave" />
                         </Grid>
                     </Grid>
                 </Border>
@@ -1032,11 +1149,34 @@
                                 <TextBlock x:Name="ToolsVersionText" Text="v2.2 · 116 özellik" FontSize="9.5" Foreground="{DynamicResource AccentText}"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
-                            <TextBlock Text="Sistem, bağlantı, ağ testleri, zamanlayıcı ve bakım araçları."
+                            <TextBlock Text="Sistem, otomasyon, ağ, pano, not ve ses araçları."
                                        FontSize="10" Foreground="#7396BE" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <UniformGrid Columns="4" Margin="0,9,0,0">
+                                <Button x:Name="ToolsTabGeneral" Content="GENEL" Style="{StaticResource GhostButton}"
+                                        FontSize="9.5" Padding="8,5" Background="#14365D"
+                                        Foreground="{DynamicResource AccentText}" Click="ToolsTab_Click" Tag="general"
+                                        AutomationProperties.Name="Genel sekmesi"
+                                        AutomationProperties.AutomationId="ToolsTabGeneral" />
+                                <Button x:Name="ToolsTabAutomation" Content="OTOMASYON" Style="{StaticResource GhostButton}"
+                                        FontSize="9.5" Padding="8,5" Margin="4,0,0,0" Background="Transparent"
+                                        Foreground="#7396BE" Click="ToolsTab_Click" Tag="automation"
+                                        AutomationProperties.Name="Otomasyon sekmesi"
+                                        AutomationProperties.AutomationId="ToolsTabAutomation" />
+                                <Button x:Name="ToolsTabNetwork" Content="AĞ" Style="{StaticResource GhostButton}"
+                                        FontSize="9.5" Padding="8,5" Margin="4,0,0,0" Background="Transparent"
+                                        Foreground="#7396BE" Click="ToolsTab_Click" Tag="network"
+                                        AutomationProperties.Name="Ağ sekmesi"
+                                        AutomationProperties.AutomationId="ToolsTabNetwork" />
+                                <Button x:Name="ToolsTabUtility" Content="ARAÇLAR" Style="{StaticResource GhostButton}"
+                                        FontSize="9.5" Padding="8,5" Margin="4,0,0,0" Background="Transparent"
+                                        Foreground="#7396BE" Click="ToolsTab_Click" Tag="utility"
+                                        AutomationProperties.Name="Araçlar sekmesi"
+                                        AutomationProperties.AutomationId="ToolsTabUtility" />
+                            </UniformGrid>
                         </StackPanel>
 
-                        <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto"
+                        <Grid Grid.Row="1" Margin="0,10,0,0">
+                        <ScrollViewer x:Name="ToolsGeneralScroll" VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
                                 <TextBlock Text="SİSTEM &amp; BAĞLANTI" Style="{StaticResource CardTitle}" FontSize="10" />
@@ -1212,11 +1352,238 @@
                             </StackPanel>
                         </ScrollViewer>
 
+                        <!-- Otomasyon sekmesi -->
+                        <ScrollViewer x:Name="ToolsAutomationScroll" Visibility="Collapsed"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel>
+                                <TextBlock Text="BETİK MERKEZİ" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <TextBlock Text="PowerShell, Python, .bat ve .exe dosyalarını arka planda çalıştırın. Liste Ctrl+Alt+1…9 ile de başlatılabilir."
+                                           FontSize="9" Foreground="#7396BE" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,6,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="DOSYA" Style="{StaticResource FieldLabel}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="ScriptPathBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                     Margin="0,0,6,0" AutomationProperties.Name="Betik dosya yolu" />
+                                            <Button x:Name="BrowseScriptButton" Grid.Column="1" Content="GÖZAT" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                                    Click="BrowseScript_Click" AutomationProperties.Name="Betik dosyası seç" />
+                                        </Grid>
+                                        <TextBlock Text="ARGÜMANLAR (OPSİYONEL)" Style="{StaticResource FieldLabel}" Margin="2,6,0,3" />
+                                        <TextBox x:Name="ScriptArgsBox" Style="{StaticResource InputBox}" FontSize="10.5" />
+                                        <Button x:Name="AddScriptButton" Content="BETİK EKLE" Style="{StaticResource ChipButton}" FontSize="9"
+                                                FontWeight="SemiBold" Foreground="{DynamicResource AccentSoft}"
+                                                HorizontalAlignment="Right" Margin="0,6,0,0" Click="AddScript_Click"
+                                                AutomationProperties.Name="Betiği listeye ekle" />
+                                        <TextBlock x:Name="ScriptStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="ScriptList" Margin="0,2,0,10" />
+
+                                <TextBlock Text="ZAMANLANMIŞ GÖREVLER" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <TextBlock Text="Panel açıkken her gün seçilen saatte bir kez çalışır."
+                                           FontSize="9" Foreground="#7396BE" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,6,0,10">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="62" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="SchedulerNameBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                     Margin="0,0,6,0" AutomationProperties.Name="Görev adı" />
+                                            <TextBox x:Name="SchedulerTimeBox" Grid.Column="1" Style="{StaticResource InputBox}"
+                                                     FontSize="10.5" Text="09:00" TextAlignment="Center"
+                                                     AutomationProperties.Name="Görev saati" />
+                                        </Grid>
+                                        <TextBlock Text="İŞLEM" Style="{StaticResource FieldLabel}" Margin="2,6,0,3" />
+                                        <UniformGrid Columns="4">
+                                            <Button x:Name="SchedActionScript" Content="BETİK" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                                    Background="#14365D" Click="SchedulerAction_Click" Tag="script"
+                                                    AutomationProperties.Name="Görev işlemi betik" />
+                                            <Button x:Name="SchedActionPing" Content="PING" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="#7396BE"
+                                                    Click="SchedulerAction_Click" Tag="ping"
+                                                    AutomationProperties.Name="Görev işlemi ping" />
+                                            <Button x:Name="SchedActionKill" Content="KAPAT" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="#7396BE"
+                                                    Click="SchedulerAction_Click" Tag="kill"
+                                                    AutomationProperties.Name="Görev işlemi uygulama kapat" />
+                                            <Button x:Name="SchedActionNotify" Content="BİLDİRİM" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="#7396BE"
+                                                    Click="SchedulerAction_Click" Tag="notify"
+                                                    AutomationProperties.Name="Görev işlemi bildirim" />
+                                        </UniformGrid>
+                                        <TextBlock x:Name="SchedulerTargetLabel" Text="HEDEF (BETİK ADI VEYA YOL)"
+                                                   Style="{StaticResource FieldLabel}" Margin="2,6,0,3" />
+                                        <TextBox x:Name="SchedulerTargetBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 AutomationProperties.Name="Görev hedefi" />
+                                        <Button x:Name="AddScheduledTaskButton" Content="GÖREV EKLE" Style="{StaticResource ChipButton}" FontSize="9"
+                                                FontWeight="SemiBold" Foreground="{DynamicResource AccentSoft}"
+                                                HorizontalAlignment="Right" Margin="0,6,0,0" Click="AddScheduledTask_Click"
+                                                AutomationProperties.Name="Zamanlanmış görev ekle" />
+                                        <TextBlock x:Name="SchedulerStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="SchedulerList" Margin="0,2,0,10" />
+
+                                <TextBlock Text="WEBHOOK" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,6,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="Discord ve Telegram bilgilerini Ayarlar &gt; Webhook bölümüne girin. Sunucu düşüşleri, donanım uyarıları ve görev sonuçları buraya gönderilir."
+                                                   FontSize="9" Foreground="#5F7FA6" TextWrapping="Wrap" />
+                                        <Button Content="TEST GÖNDER" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                                Padding="9,6" HorizontalAlignment="Left" Margin="0,7,0,0"
+                                                Click="TestWebhook_Click" AutomationProperties.Name="Webhook test gönder"
+                                                AutomationProperties.AutomationId="ToolsWebhookTest" />
+                                        <TextBlock x:Name="ToolsWebhookStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock x:Name="ToolsAutomationStatus" Text="" FontSize="9" Foreground="#4F6C8F"
+                                           TextWrapping="Wrap" Margin="1,2,0,4" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Ağ sekmesi -->
+                        <ScrollViewer x:Name="ToolsNetworkScroll" Visibility="Collapsed"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel>
+                                <TextBlock Text="DNS DEĞİŞTİRİCİ" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,6,0,10">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock Text="BAĞDAŞTIRICI" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                            <TextBlock x:Name="DnsAdapterText" Text="—" Style="{StaticResource MetricValue}"
+                                                       FontSize="10.5" MaxWidth="210" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                        <Grid Margin="0,5,0,0">
+                                            <TextBlock Text="DNS" Style="{StaticResource MetricLabel}" FontSize="10.5" />
+                                            <TextBlock x:Name="DnsCurrentText" Text="—" Style="{StaticResource MetricValue}"
+                                                       FontSize="10.5" MaxWidth="210" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                        <UniformGrid Columns="2" Margin="0,8,0,0">
+                                            <Button Content="CLOUDFLARE 1.1.1.1" Style="{StaticResource GhostButton}"
+                                                    FontSize="9" Padding="7,6" Margin="0,0,3,4" Click="DnsApply_Click" Tag="cloudflare"
+                                                    AutomationProperties.Name="DNS Cloudflare yap" />
+                                            <Button Content="GOOGLE 8.8.8.8" Style="{StaticResource GhostButton}"
+                                                    FontSize="9" Padding="7,6" Margin="3,0,0,4" Click="DnsApply_Click" Tag="google"
+                                                    AutomationProperties.Name="DNS Google yap" />
+                                            <Button Content="OPENDNS" Style="{StaticResource GhostButton}"
+                                                    FontSize="9" Padding="7,6" Margin="0,0,3,0" Click="DnsApply_Click" Tag="opendns"
+                                                    AutomationProperties.Name="DNS OpenDNS yap" />
+                                            <Button Content="OTOMATİK (DHCP)" Style="{StaticResource GhostButton}"
+                                                    FontSize="9" Padding="7,6" Margin="3,0,0,0" Click="DnsApply_Click" Tag="auto"
+                                                    AutomationProperties.Name="DNS otomatik yap" />
+                                        </UniformGrid>
+                                        <TextBlock x:Name="DnsStatusText" Text="Değişiklik için yönetici izni gerekir."
+                                                   FontSize="9" Foreground="#4F6C8F" TextWrapping="Wrap" Margin="1,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid>
+                                    <TextBlock Text="AKTİF BAĞLANTILAR" Style="{StaticResource CardTitle}" FontSize="10" />
+                                    <Button Content="YENİLE" Style="{StaticResource ChipButton}" FontSize="9"
+                                            FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                            HorizontalAlignment="Right" Click="RefreshConnectionsTool_Click"
+                                            AutomationProperties.Name="Aktif bağlantıları yenile" />
+                                </Grid>
+                                <TextBlock Text="Hangi uygulama hangi uzak adresle konuşuyor (TCP). Yalnızca okuma yapılır."
+                                           FontSize="9" Foreground="#7396BE" Margin="0,3,0,5" TextWrapping="Wrap" />
+                                <CheckBox x:Name="ConnectionsEstablishedCheck" Style="{StaticResource DarkCheck}"
+                                          Content="Yalnızca kurulu bağlantılar" FontSize="11" Margin="0,0,0,6"
+                                          Checked="ConnectionsFilter_Changed" Unchecked="ConnectionsFilter_Changed" />
+                                <StackPanel x:Name="ConnectionList" Margin="0,0,0,10" />
+                                <TextBlock x:Name="ConnectionsStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                           TextWrapping="Wrap" Margin="1,2,0,4" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Araçlar sekmesi -->
+                        <ScrollViewer x:Name="ToolsUtilityScroll" Visibility="Collapsed"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="PANO GEÇMİŞİ" Style="{StaticResource CardTitle}" FontSize="10" />
+                                    <Button Content="TEMİZLE" Style="{StaticResource ChipButton}" FontSize="9"
+                                            FontWeight="Bold" Foreground="#93B2D6" HorizontalAlignment="Right"
+                                            Click="ClipboardClear_Click" AutomationProperties.Name="Pano geçmişini temizle" />
+                                </Grid>
+                                <TextBlock Text="Son 15 metin yalnızca bellekte tutulur; seçmek tekrar kopyalar."
+                                           FontSize="9" Foreground="#7396BE" Margin="0,3,0,5" TextWrapping="Wrap" />
+                                <StackPanel x:Name="ClipboardList" Margin="0,0,0,10" />
+                                <TextBlock x:Name="ClipboardStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                           TextWrapping="Wrap" Margin="1,0,0,8" />
+
+                                <TextBlock Text="NOTLAR" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
+                                        CornerRadius="9" Padding="10,8" Margin="0,6,0,10">
+                                    <StackPanel>
+                                        <TextBox x:Name="NoteTitleBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 AutomationProperties.Name="Not başlığı" />
+                                        <TextBox x:Name="NoteEditorBox" Style="{StaticResource InputBox}" FontSize="10.5"
+                                                 Height="64" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,6,0,0"
+                                                 VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Not içeriği" />
+                                        <Grid Margin="0,6,0,0">
+                                            <Button x:Name="NoteNewButton" Content="YENİ" Style="{StaticResource ChipButton}"
+                                                    FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                                    HorizontalAlignment="Left" Click="NoteNew_Click"
+                                                    AutomationProperties.Name="Yeni not" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="KAYDET" Style="{StaticResource ChipButton}" FontSize="9"
+                                                        FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                                        Click="NoteSave_Click" AutomationProperties.Name="Notu kaydet" />
+                                                <Button x:Name="NoteExportTxtButton" Content=".TXT" Style="{StaticResource ChipButton}"
+                                                        FontSize="9" FontWeight="Bold" Foreground="#93B2D6" Margin="8,0,0,0"
+                                                        Click="NoteExportTxt_Click" AutomationProperties.Name="Notu txt dışa aktar" />
+                                                <Button x:Name="NoteExportMdButton" Content=".MD" Style="{StaticResource ChipButton}"
+                                                        FontSize="9" FontWeight="Bold" Foreground="#93B2D6" Margin="8,0,0,0"
+                                                        Click="NoteExportMd_Click" AutomationProperties.Name="Notu md dışa aktar" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock x:Name="NoteEditorStatus" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="NotesList" Margin="0,2,0,10" />
+
+                                <Grid>
+                                    <TextBlock Text="SES CİHAZLARI" Style="{StaticResource CardTitle}" FontSize="10" />
+                                    <Button Content="YENİLE" Style="{StaticResource ChipButton}" FontSize="9"
+                                            FontWeight="Bold" Foreground="{DynamicResource AccentSoft}"
+                                            HorizontalAlignment="Right" Click="AudioRefresh_Click"
+                                            AutomationProperties.Name="Ses cihazlarını yenile" />
+                                </Grid>
+                                <TextBlock Text="Windows varsayılan çıkış ve giriş cihazını panelden değiştirin."
+                                           FontSize="9" Foreground="#7396BE" Margin="0,3,0,5" TextWrapping="Wrap" />
+                                <TextBlock Text="ÇIKIŞ" Style="{StaticResource FieldLabel}" Margin="2,2,0,3" />
+                                <StackPanel x:Name="AudioOutputList" />
+                                <TextBlock Text="GİRİŞ" Style="{StaticResource FieldLabel}" Margin="2,8,0,3" />
+                                <StackPanel x:Name="AudioInputList" />
+                                <TextBlock x:Name="AudioStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                           TextWrapping="Wrap" Margin="1,6,0,4" />
+                            </StackPanel>
+                        </ScrollViewer>
+                        </Grid>
+
                         <Grid Grid.Row="2" Margin="0,12,0,0">
                             <Button Content="ÖZELLİKLER" Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
-                                    Click="OpenFeatures_Click" AutomationProperties.Name="100 özellik listesi" />
+                                    Click="OpenFeatures_Click" AutomationProperties.Name="100 özellik listesi"
+                                    AutomationProperties.AutomationId="ToolsFeatures" />
                             <Button Content="KAPAT" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
-                                    Click="ToolsClose_Click" AutomationProperties.Name="Araç merkezini kapat" />
+                                    Click="ToolsClose_Click" AutomationProperties.Name="Araç merkezini kapat"
+                                    AutomationProperties.AutomationId="ToolsClose" />
                         </Grid>
                     </Grid>
                 </Border>
@@ -1233,16 +1600,20 @@
                             Foreground="{DynamicResource AccentSoft}" Margin="0,0,2,0" />
                     <Button x:Name="ToolsButton" Style="{StaticResource IconButton}" Content="&#xE9D9;"
                             ToolTip="Araç merkezi (Ctrl+K)" Click="OpenTools_Click"
-                            AutomationProperties.Name="Araç merkezi" />
+                            AutomationProperties.Name="Araç merkezi"
+                            AutomationProperties.AutomationId="ToolsButton" />
                     <Button x:Name="HistoryButton" Style="{StaticResource IconButton}" Content="&#xE81C;"
                             ToolTip="Geçmiş ve rapor" Click="OpenHistory_Click"
-                            AutomationProperties.Name="Geçmiş ve rapor" Margin="2,0,0,0" />
+                            AutomationProperties.Name="Geçmiş ve rapor" Margin="2,0,0,0"
+                            AutomationProperties.AutomationId="HistoryButton" />
                     <Button x:Name="RefreshButton" Style="{StaticResource IconButton}" Content="&#xE72C;"
                             ToolTip="Şimdi yenile (F5)" Click="Refresh_Click"
-                            AutomationProperties.Name="Yenile" Margin="2,0,0,0" />
+                            AutomationProperties.Name="Yenile" Margin="2,0,0,0"
+                            AutomationProperties.AutomationId="RefreshButton" />
                     <Button x:Name="SettingsButton" Style="{StaticResource IconButton}" Content="&#xE713;"
                             ToolTip="Ayarlar (Ctrl+,)" Click="OpenSettings_Click"
-                            AutomationProperties.Name="Ayarlar" Margin="2,0,0,0" />
+                            AutomationProperties.Name="Ayarlar" Margin="2,0,0,0"
+                            AutomationProperties.AutomationId="SettingsButton" />
                 </StackPanel>
             </Grid>
         </Grid>

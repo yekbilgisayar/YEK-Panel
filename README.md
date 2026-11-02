@@ -8,24 +8,30 @@ Windows 10/11 için açık kaynak sistem ve sunucu izleme paneli. Tek dosya olar
 
 ## Özellikler
 
-- CPU, RAM, disk, çalışma süresi, ağ hızı ve süreç takibi.
+- CPU, RAM, disk, çalışma süresi, ağ hızı ve süreç takibi; en yoğun 5 işlemi tek tıkla kapatma.
+- GPU yükü (%) ve VRAM kullanımı; CPU sıcaklığı ve RAM eşik uyarıları, isteğe bağlı ses.
 - Ana ekranda pil, bağlantı türü/hızı, yerel IP, ağ geçidi, DNS, Wi-Fi, genel IP ve tüm diskler; 30 saniyede bir otomatik yenileme, tek tıkla IP kopyalama.
 - Web sitesi, sunucu paneli, Home Assistant ve Nextcloud için durum, gecikme, SSL ve TCP port izleme.
 - Hava durumu, internet gecikmesi ve dış IP.
-- Araç Merkezi: pil, ağ adaptörü, DNS/ağ geçidi, diskler, ping, port testi, kronometre, geri sayım ve not.
+- Araç Merkezi sekmeleri: pil, ağ adaptörü, DNS değiştirici, etkin bağlantılar, diskler, ping, port testi, kronometre, geri sayım, pano geçmişi, notlar ve ses cihazları.
+- Otomasyon: PowerShell/Python/BAT/PS1 betikleri, Ctrl+Alt+1–9 hızlı başlatma, zamanlanmış görevler, Discord/Telegram webhook bildirimleri.
 - 7/30 günlük çevrimiçi raporu, kesinti listesi, bildirim geçmişi ve CSV dışa aktarma.
 - Sunucu bazında bakım modu, yavaş yanıt eşiği ve SSL bitiş uyarısı.
-- Mini mod, sistem tepsisi, sessiz saatler, günlük özet ve tema renkleri.
+- Mini mod, sistem tepsisi, sessiz saatler, günlük özet ve tema renkleri; ana ekran kartlarını sıralama/gizleme.
 - Tek örnek koruması: ikinci kez açılırsa mevcut pencere öne gelir.
 - GitHub Releases üzerinden güncelleme kontrolü, sürüm notları ve "bu sürümü atla" seçeneği.
 - Beklenmeyen hatalar `%AppData%\YekPanel\crash.log` dosyasına yazılır; sürüm numarası tek kaynaktan gelir.
 
-Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 116 özellik.
+Tam liste: [OZELLIKLER.txt](OZELLIKLER.txt) — 134 özellik.
+
+## Android
+
+YEK Panel'in Android sürümü de aynı depoda: pil, bellek, depolama, CPU ve ağ paneli; eşik uyarıları, ping testi, notlar ve günlük hatırlatıcılar. APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.0.0.apk`); **Google Play Store sürümü yakında**. Kaynak kod `android/` klasöründe.
 
 ## Kaynak kod
 
 - GitHub: [yekbilgisayar/YEK-Panel](https://github.com/yekbilgisayar/YEK-Panel)
-- Kaynak ZIP: [YEK-Panel-2.2.0-kaynak.zip](https://github.com/yekbilgisayar/YEK-Panel/releases/download/v2.2.0/YEK-Panel-2.2.0-kaynak.zip)
+- Kaynak ZIP: [YEK-Panel-2.3.0-kaynak.zip](https://github.com/yekbilgisayar/YEK-Panel/releases/download/v2.3.0/YEK-Panel-2.3.0-kaynak.zip)
 
 Kaynak ZIP içinde uygulama kodu, servisler, kurulum betiği, README ve lisans bulunur; derlenmiş exe veya kişisel ayar dosyası bulunmaz.
 
@@ -33,14 +39,17 @@ Kaynak ZIP içinde uygulama kodu, servisler, kurulum betiği, README ve lisans b
 
 En son sürümü **Releases** bölümünden indirin.
 
-- **Kurulum:** `YEK-Panel-Setup-2.2.0.exe`
+- **Kurulum:** `YEK-Panel-Setup-2.3.0.exe`
   - Yalnızca mevcut kullanıcı için kurulur; yönetici izni gerekmez.
   - Varsayılan konum: `%LocalAppData%\Programs\YekPanel`
   - Masaüstü ve Başlat menüsü kısayolları oluşturulur.
   - Kaldırma: Başlat > YEK Panel > Kaldır YEK Panel veya Windows Ayarlar > Uygulamalar.
   - Kaldırma ayarlara ve geçmişe dokunmaz; veriler `%AppData%\YekPanel` altında kalır.
-- **Taşınabilir:** `YEK-Panel-2.2.0-portable.exe`
+- **Taşınabilir:** `YEK-Panel-2.3.0-portable.exe`
   - Kurulum gerekmez; çift tıklayarak çalıştırın.
+- **Android:** `YEK-Panel-Android-1.0.0.apk`
+  - Android 8.0 ve üzeri; APK'yı telefona kopyalayıp kurun (bilinmeyen kaynak izni gerekir).
+  - Test imzalıdır; Google Play Store sürümü yakında.
 
 İlk açılışta sunucu adresleri **boş** gelir. Kendi adreslerinizi **Ayarlar** ekranından girin. Kurulum paketinde kişisel sunucu adresi, MAC adresi, şehir veya geçmiş bulunmaz.
 
@@ -83,17 +92,17 @@ Bu klasör doğrudan bir Git deposu olarak kullanılabilir. `release/*.exe` ve t
 ```powershell
 git init
 git add .
-git commit -m "YEK Panel v2.2"
+git commit -m "YEK Panel v2.3"
 git branch -M main
 git remote add origin https://github.com/KULLANICI/REPO.git
 git push -u origin main
 ```
 
-Ardından GitHub'da **Releases > Draft a new release** ile `v2.2.0` etiketi oluşturun ve şu dosyaları ekleyin:
+Ardından GitHub'da **Releases > Draft a new release** ile `v2.3.0` etiketi oluşturun ve şu dosyaları ekleyin:
 
-- `release/YEK-Panel-Setup-2.2.0.exe`
-- `release/YEK-Panel-2.2.0-portable.exe`
-- `release/YEK-Panel-2.2.0-kaynak.zip`
+- `release/YEK-Panel-Setup-2.3.0.exe`
+- `release/YEK-Panel-2.3.0-portable.exe`
+- `release/YEK-Panel-2.3.0-kaynak.zip`
 - `release/SHA256SUMS.txt`
 
 ## Gizlilik

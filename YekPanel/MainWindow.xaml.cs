@@ -15,6 +15,7 @@ using YekPanel.Models;
 using YekPanel.Services;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
+using ScheduledTask = YekPanel.Models.ScheduledTask;
 
 namespace YekPanel;
 
@@ -85,8 +86,12 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _countdownTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _summaryTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _connectionTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer _clipboardTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
+    private readonly DispatcherTimer _schedulerTimer = new() { Interval = TimeSpan.FromSeconds(20) };
     private readonly Stopwatch _stopwatch = new();
     private readonly HashSet<string> _sslAlerted = new();
+    private readonly ClipboardHistory _clipboard = new();
+    private readonly List<string> _pendingCardOrder = new();
     private WeatherInfo? _weather;
     private bool _weatherLoading;
     private bool _checking;
@@ -102,6 +107,17 @@ public partial class MainWindow : Window
     private double _pendingOpacity = 1.0;
     private int _reportDays = 7;
     private string _publicIp = "—";
+    private string _toolsTab = "general";
+    private string _pendingSchedulerAction = "script";
+    private string? _editingNoteId;
+    private string _clipboardIgnore = "";
+    private DateTime _lastCpuAlert = DateTime.MinValue;
+    private DateTime _lastRamAlert = DateTime.MinValue;
+    private bool _cpuAlertActive;
+    private bool _ramAlertActive;
+    private bool _schedulerRunning;
+    private bool _connectionsLoading;
+    private bool _webhookTesting;
 
     public MainWindow()
     {
@@ -129,8 +145,16 @@ public partial class MainWindow : Window
 
         BuildServerRows();
         BuildProcessRows();
+        ApplyCardLayout();
 
-        _clockTimer.Tick += (_, _) => UpdateClock();
+        _clipboard.Changed += () => Dispatcher.BeginInvoke(RefreshClipboardList);
+        NotesService.EnsureMigrated(_settings.QuickNote);
+
+        _clockTimer.Tick += (_, _) =>
+        {
+            UpdateClock();
+            UpdateSystem();
+        };
         _clockTimer.Start();
         UpdateClock();
         UpdateSystem();
@@ -144,6 +168,8 @@ public partial class MainWindow : Window
         _countdownTimer.Tick += (_, _) => UpdateCountdown();
         _summaryTimer.Tick += (_, _) => CheckDailySummary();
         _connectionTimer.Tick += async (_, _) => await RefreshConnectionAsync();
+        _clipboardTimer.Tick += (_, _) => CaptureClipboard();
+        _schedulerTimer.Tick += (_, _) => _ = RunScheduledTasksAsync();
         CpuChart.SizeChanged += (_, _) => RenderSpark(CpuChart, _cpuHistory, _cpuLine, _cpuFill);
         RamChart.SizeChanged += (_, _) => RenderSpark(RamChart, _ramHistory, _ramLine, _ramFill);
 
@@ -154,6 +180,9 @@ public partial class MainWindow : Window
         _temperatureTimer.Start();
         _summaryTimer.Start();
         _connectionTimer.Start();
+        _clipboardTimer.Start();
+        _schedulerTimer.Start();
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
         Loaded += async (_, _) =>
         {
             UpdateSystem();
@@ -327,6 +356,7 @@ public partial class MainWindow : Window
         UploadText.Text = FormatRate(up);
         MiniSpeedText.Text = $"↓ {FormatRate(down)}  ↑ {FormatRate(up)}";
         UpdateTrayText();
+        CheckRamAlert();
     }
 
     private void UpdateTrayText()
@@ -433,7 +463,7 @@ public partial class MainWindow : Window
         ProcessesList.Children.Clear();
         _processRows.Clear();
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 5; i++)
         {
             var name = new TextBlock
             {
@@ -446,22 +476,41 @@ public partial class MainWindow : Window
             var value = new TextBlock
             {
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 10,
+                FontSize = 9.5,
                 Foreground = Muted,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(8, 0, 0, 0)
             };
 
+            var kill = new Button
+            {
+                Content = "✕",
+                Style = (Style)FindResource("ChipButton"),
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                Foreground = StatusRed,
+                Padding = new Thickness(4, 1, 4, 1),
+                Margin = new Thickness(7, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = Visibility.Collapsed,
+                ToolTip = "Süreci sonlandır"
+            };
+            AutomationProperties.SetName(kill, "Süreci sonlandır");
+            kill.Click += KillProcess_Click;
+
             var grid = new Grid { Margin = new Thickness(0, i == 0 ? 0 : 4, 0, 0) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.Children.Add(name);
             Grid.SetColumn(value, 1);
             grid.Children.Add(value);
+            Grid.SetColumn(kill, 2);
+            grid.Children.Add(kill);
 
             ProcessesList.Children.Add(grid);
-            _processRows.Add(new ProcessRow(name, value));
+            _processRows.Add(new ProcessRow(name, value, kill));
         }
     }
 
@@ -477,13 +526,45 @@ public partial class MainWindow : Window
                 var sample = top[i];
                 row.Name.Text = sample.Name;
                 row.Value.Text = $"{sample.MemoryMb.ToString("0", Tr)} MB · %{sample.CpuPercent.ToString("0", Tr)}";
+                row.Name.ToolTip = sample.Count > 1
+                    ? $"{sample.Name} · {sample.Count} süreç · PID {sample.ProcessId}"
+                    : $"{sample.Name} · PID {sample.ProcessId}";
+                row.Kill.Tag = sample.Name;
+                row.Kill.Visibility = Visibility.Visible;
+                AutomationProperties.SetName(row.Kill, $"{sample.Name} sürecini kapat");
             }
             else
             {
                 row.Name.Text = "—";
+                row.Name.ToolTip = null;
                 row.Value.Text = "";
+                row.Kill.Tag = null;
+                row.Kill.Visibility = Visibility.Collapsed;
             }
         }
+    }
+
+    private void KillProcess_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string name } || string.IsNullOrWhiteSpace(name))
+            return;
+
+        var (killed, error) = ProcessManager.KillGroup(name);
+        if (killed > 0)
+        {
+            var text = $"{name} kapatıldı ({killed} süreç)";
+            LastUpdateText.Text = text;
+            ShowBalloon("YEK Panel · Süreç kapandı", text, Forms.ToolTipIcon.Info);
+            _ = WebhookService.SendAsync(_settings, "Süreç kapandı: " + text);
+        }
+        else
+        {
+            var text = $"{name} kapatılamadı · {error}";
+            LastUpdateText.Text = text;
+            ShowBalloon("YEK Panel · Süreç kapatılamadı", text, Forms.ToolTipIcon.Warning, force: true);
+        }
+
+        UpdateProcesses();
     }
 
     private void BuildServerRows()
@@ -1018,8 +1099,25 @@ public partial class MainWindow : Window
 
     private void NotifyServer(string name, bool recovered)
     {
-        if (!_settings.NotificationsEnabled || IsQuietHours(DateTime.Now) ||
-            _tray == null || !_tray.Visible || IsActive)
+        var text = recovered
+            ? $"{name} tekrar yanıt veriyor."
+            : $"{name} şu anda yanıt vermiyor.";
+
+        if (WebhookService.IsConfigured(_settings) && !IsQuietHours(DateTime.Now))
+            _ = WebhookService.SendAsync(_settings, recovered ? "Sunucu düzeldi: " + text : "Sunucu sorunu: " + text);
+
+        if (!_settings.NotificationsEnabled || IsQuietHours(DateTime.Now))
+            return;
+
+        if (_settings.SoundAlerts)
+        {
+            if (recovered)
+                SoundService.PlayRecovery();
+            else
+                SoundService.PlayWarning();
+        }
+
+        if (_tray == null || !_tray.Visible || IsActive)
             return;
 
         try
@@ -1027,7 +1125,7 @@ public partial class MainWindow : Window
             _tray.ShowBalloonTip(
                 6000,
                 recovered ? "YEK Panel · Sunucu düzeldi" : "YEK Panel · Sunucu sorunu",
-                recovered ? $"{name} tekrar yanıt veriyor." : $"{name} şu anda yanıt vermiyor.",
+                text,
                 recovered ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning);
         }
         catch
@@ -1516,6 +1614,8 @@ public partial class MainWindow : Window
         _countdownTimer.Stop();
         _summaryTimer.Stop();
         _connectionTimer.Stop();
+        _clipboardTimer.Stop();
+        _schedulerTimer.Stop();
         _stopwatch.Stop();
         _sensors.Dispose();
 
@@ -1746,6 +1846,33 @@ public partial class MainWindow : Window
     {
         var sample = await Task.Run(_sensors.Read);
 
+        if (sample.GpuLoadPercent is double load)
+        {
+            GpuValue.Text = $"%{load.ToString("0", Tr)}";
+            GpuValue.Foreground = load >= 90 ? StatusRed : load >= 70 ? StatusAmber : TextSoft;
+            GpuBar.Value = Math.Clamp(load, 0, 100);
+            GpuBar.Foreground = BarColor(load);
+            GpuBar.ToolTip = sample.GpuName ?? "GPU kullanımı";
+        }
+        else
+        {
+            GpuValue.Text = "—";
+            GpuValue.Foreground = Muted;
+            GpuBar.Value = 0;
+            GpuBar.ToolTip = "GPU kullanım sensörü okunamadı.";
+        }
+
+        if (sample.GpuMemoryUsedMb is double vramUsed)
+        {
+            VramValue.Text = sample.GpuMemoryTotalMb is double vramTotal && vramTotal > 0
+                ? $"{(vramUsed / 1024).ToString("0.0", Tr)} / {(vramTotal / 1024).ToString("0.0", Tr)} GB"
+                : $"{(vramUsed / 1024).ToString("0.0", Tr)} GB";
+        }
+        else
+        {
+            VramValue.Text = "—";
+        }
+
         if (sample.Cpu is null && sample.Gpu is null)
         {
             TempValue.Text = "—";
@@ -1761,6 +1888,7 @@ public partial class MainWindow : Window
         {
             parts.Add($"CPU {TempWithUnit(cpu)}");
             max = Math.Max(max, cpu);
+            CheckCpuAlert(cpu);
         }
 
         if (sample.Gpu is double gpu)
@@ -1773,6 +1901,70 @@ public partial class MainWindow : Window
         TempValue.Foreground = max >= 85 ? StatusRed : max >= 70 ? StatusAmber : TextSoft;
         TempValue.ToolTip = "Sıcaklıklar 8 saniyede bir okunur." +
                             (sample.Note == null ? "" : "\n" + sample.Note);
+    }
+
+    private void CheckCpuAlert(double celsius)
+    {
+        if (!_settings.CpuAlertEnabled)
+        {
+            _cpuAlertActive = false;
+            return;
+        }
+
+        var threshold = _settings.CpuAlertC;
+        if (celsius >= threshold)
+        {
+            var now = DateTime.Now;
+            if (_cpuAlertActive && now - _lastCpuAlert < TimeSpan.FromMinutes(15))
+                return;
+
+            _cpuAlertActive = true;
+            _lastCpuAlert = now;
+
+            var text = $"CPU {celsius.ToString("0", Tr)}°C · eşik {threshold}°C";
+            NotificationLog.Add("CPU sıcaklığı", recovered: false);
+            ShowBalloon("YEK Panel · CPU sıcaklığı", text, Forms.ToolTipIcon.Warning, force: true);
+            if (_settings.SoundAlerts)
+                SoundService.PlayWarning();
+            if (WebhookService.IsConfigured(_settings))
+                _ = WebhookService.SendAsync(_settings, "Donanım uyarısı: " + text);
+        }
+        else if (celsius < threshold - 3)
+        {
+            _cpuAlertActive = false;
+        }
+    }
+
+    private void CheckRamAlert()
+    {
+        if (!_settings.RamAlertEnabled)
+        {
+            _ramAlertActive = false;
+            return;
+        }
+
+        var threshold = _settings.RamAlertPercent;
+        if (_lastRamPercent >= threshold)
+        {
+            var now = DateTime.Now;
+            if (_ramAlertActive && now - _lastRamAlert < TimeSpan.FromMinutes(15))
+                return;
+
+            _ramAlertActive = true;
+            _lastRamAlert = now;
+
+            var text = $"RAM %{_lastRamPercent.ToString("0", Tr)} · eşik %{threshold}";
+            NotificationLog.Add("RAM kullanımı", recovered: false);
+            ShowBalloon("YEK Panel · RAM kullanımı", text, Forms.ToolTipIcon.Warning, force: true);
+            if (_settings.SoundAlerts)
+                SoundService.PlayWarning();
+            if (WebhookService.IsConfigured(_settings))
+                _ = WebhookService.SendAsync(_settings, "Donanım uyarısı: " + text);
+        }
+        else if (_lastRamPercent < threshold - 3)
+        {
+            _ramAlertActive = false;
+        }
     }
 
     private async Task WakeServerAsync(string name, string mac)
@@ -2087,6 +2279,29 @@ public partial class MainWindow : Window
         SlowThresholdBox.Text = _settings.SlowThresholdMs.ToString(Tr);
         DailySummaryCheck.IsChecked = _settings.DailySummaryEnabled;
         SummaryTimeBox.Text = _settings.DailySummaryTime;
+        CpuAlertCheck.IsChecked = _settings.CpuAlertEnabled;
+        CpuAlertBox.Text = _settings.CpuAlertC.ToString(Tr);
+        RamAlertCheck.IsChecked = _settings.RamAlertEnabled;
+        RamAlertBox.Text = _settings.RamAlertPercent.ToString(Tr);
+        SoundAlertsCheck.IsChecked = _settings.SoundAlerts;
+        ClipboardHistoryCheck.IsChecked = _settings.ClipboardHistoryEnabled;
+        WebhookEnabledCheck.IsChecked = _settings.WebhookEnabled;
+        DiscordUrlBox.Text = _settings.DiscordWebhookUrl;
+        TelegramTokenBox.Text = _settings.TelegramBotToken;
+        TelegramChatIdBox.Text = _settings.TelegramChatId;
+        WebhookStatusText.Text = "";
+
+        _pendingCardOrder.Clear();
+        _pendingCardOrder.AddRange(_settings.CardOrder
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var hidden = _settings.HiddenCards
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        ShowComputerCheck.IsChecked = !hidden.Contains("computer");
+        ShowConnectionCheck.IsChecked = !hidden.Contains("connection");
+        ShowServerCheck.IsChecked = !hidden.Contains("server");
+        UpdateCardOrderPreview();
+
         MaintenanceSite.IsChecked = _settings.Endpoints[0].Maintenance;
         MaintenancePanel.IsChecked = _settings.Endpoints[1].Maintenance;
         MaintenanceHa.IsChecked = _settings.Endpoints[2].Maintenance;
@@ -2145,6 +2360,27 @@ public partial class MainWindow : Window
         _settings.DailySummaryEnabled = DailySummaryCheck.IsChecked == true;
         _settings.DailySummaryTime = NormalizeClock(SummaryTimeBox.Text, _settings.DailySummaryTime);
         _settings.AutoUpdateCheck = AutoUpdateCheck.IsChecked == true;
+        _settings.CpuAlertEnabled = CpuAlertCheck.IsChecked == true;
+        if (int.TryParse(CpuAlertBox.Text.Trim(), NumberStyles.Integer, Tr, out var cpuLimit))
+            _settings.CpuAlertC = Math.Clamp(cpuLimit, 50, 110);
+        _settings.RamAlertEnabled = RamAlertCheck.IsChecked == true;
+        if (int.TryParse(RamAlertBox.Text.Trim(), NumberStyles.Integer, Tr, out var ramLimit))
+            _settings.RamAlertPercent = Math.Clamp(ramLimit, 50, 100);
+        _settings.SoundAlerts = SoundAlertsCheck.IsChecked == true;
+        _settings.ClipboardHistoryEnabled = ClipboardHistoryCheck.IsChecked == true;
+        _settings.WebhookEnabled = WebhookEnabledCheck.IsChecked == true;
+        _settings.DiscordWebhookUrl = DiscordUrlBox.Text.Trim();
+        _settings.TelegramBotToken = TelegramTokenBox.Text.Trim();
+        _settings.TelegramChatId = TelegramChatIdBox.Text.Trim();
+        _settings.CardOrder = string.Join(",", _pendingCardOrder);
+        var hiddenCards = new List<string>();
+        if (ShowComputerCheck.IsChecked != true)
+            hiddenCards.Add("computer");
+        if (ShowConnectionCheck.IsChecked != true)
+            hiddenCards.Add("connection");
+        if (ShowServerCheck.IsChecked != true)
+            hiddenCards.Add("server");
+        _settings.HiddenCards = string.Join(",", hiddenCards);
         _settings.WindowOpacity = _pendingOpacity;
         _settings.City = CityBox.Text.Trim();
         _settings.Accent = _selectedAccent;
@@ -2152,6 +2388,12 @@ public partial class MainWindow : Window
         SettingsStore.Save(_settings);
         ApplyStartupSetting();
         ApplyAccent(_settings.Accent, persist: false);
+        ApplyCardLayout();
+        if (!_settings.ClipboardHistoryEnabled)
+        {
+            _clipboard.Clear();
+            RefreshClipboardList();
+        }
         Opacity = _settings.WindowOpacity;
 
         Topmost = _settings.Topmost;
@@ -2179,6 +2421,81 @@ public partial class MainWindow : Window
         _pendingOpacity = _settings.WindowOpacity;
         Opacity = _settings.WindowOpacity;
         SettingsOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private static string CardLabel(string key) => key switch
+    {
+        "computer" => "Bilgisayar",
+        "connection" => "Sistem ve bağlantı",
+        "server" => "Sunucular",
+        _ => key
+    };
+
+    private void ApplyCardLayout()
+    {
+        var cards = new Dictionary<string, Border>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["computer"] = ComputerCard,
+            ["connection"] = ConnectionCard,
+            ["server"] = ServerCard
+        };
+
+        var hidden = _settings.HiddenCards
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (key, card) in cards)
+            card.Visibility = hidden.Contains(key) ? Visibility.Collapsed : Visibility.Visible;
+
+        var ordered = _settings.CardOrder
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(key => cards.GetValueOrDefault(key))
+            .Where(card => card != null)
+            .ToList();
+
+        foreach (var card in ordered)
+            MainCardsPanel.Children.Remove(card!);
+        foreach (var card in ordered)
+            MainCardsPanel.Children.Add(card!);
+    }
+
+    private void UpdateCardOrderPreview()
+    {
+        if (CardOrderPreview == null)
+            return;
+
+        var order = string.Join(" → ", _pendingCardOrder.Select(CardLabel));
+        var hidden = new List<string>();
+        if (ShowComputerCheck.IsChecked != true)
+            hidden.Add("Bilgisayar");
+        if (ShowConnectionCheck.IsChecked != true)
+            hidden.Add("Sistem ve bağlantı");
+        if (ShowServerCheck.IsChecked != true)
+            hidden.Add("Sunucular");
+
+        CardOrderPreview.Text = "Sıra: " + order +
+                                (hidden.Count > 0 ? " · Gizli: " + string.Join(", ", hidden) : "");
+    }
+
+    private void CardVisibility_Changed(object sender, RoutedEventArgs e) => UpdateCardOrderPreview();
+
+    private void CardUp_Click(object sender, RoutedEventArgs e) => MovePendingCard(sender, -1);
+
+    private void CardDown_Click(object sender, RoutedEventArgs e) => MovePendingCard(sender, 1);
+
+    private void MovePendingCard(object sender, int offset)
+    {
+        if (sender is not Button { Tag: string key })
+            return;
+
+        var index = _pendingCardOrder.IndexOf(key);
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= _pendingCardOrder.Count)
+            return;
+
+        (_pendingCardOrder[index], _pendingCardOrder[target]) =
+            (_pendingCardOrder[target], _pendingCardOrder[index]);
+        UpdateCardOrderPreview();
     }
 
     private void Accent_Click(object sender, RoutedEventArgs e)
@@ -2237,6 +2554,10 @@ public partial class MainWindow : Window
 
         NoteBox.Text = _settings.QuickNote;
         ToolPublicIpText.Text = _publicIp;
+        DiscordUrlBox.Text = _settings.DiscordWebhookUrl;
+        TelegramTokenBox.Text = _settings.TelegramBotToken;
+        TelegramChatIdBox.Text = _settings.TelegramChatId;
+        WebhookEnabledCheck.IsChecked = _settings.WebhookEnabled;
 
         if (ToolsHost.Text.Trim().Length == 0 &&
             Uri.TryCreate(UrlAt(0), UriKind.Absolute, out var first) &&
@@ -2249,6 +2570,7 @@ public partial class MainWindow : Window
             ToolsPortHost.Text = ToolsHost.Text;
 
         ToolsOverlay.Visibility = Visibility.Visible;
+        ShowToolsTab(_toolsTab);
         SetToolsStatus("bilgiler güncelleniyor…", Muted);
         _ = RefreshToolsAsync();
     }
@@ -2855,6 +3177,1069 @@ public partial class MainWindow : Window
             Forms.ToolTipIcon.Info);
     }
 
+    private void ToolsTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string key })
+            ShowToolsTab(key);
+    }
+
+    private void ShowToolsTab(string key)
+    {
+        _toolsTab = key is "automation" or "network" or "utility" ? key : "general";
+
+        ToolsGeneralScroll.Visibility = _toolsTab == "general" ? Visibility.Visible : Visibility.Collapsed;
+        ToolsAutomationScroll.Visibility = _toolsTab == "automation" ? Visibility.Visible : Visibility.Collapsed;
+        ToolsNetworkScroll.Visibility = _toolsTab == "network" ? Visibility.Visible : Visibility.Collapsed;
+        ToolsUtilityScroll.Visibility = _toolsTab == "utility" ? Visibility.Visible : Visibility.Collapsed;
+
+        StyleToolsTab(ToolsTabGeneral, _toolsTab == "general");
+        StyleToolsTab(ToolsTabAutomation, _toolsTab == "automation");
+        StyleToolsTab(ToolsTabNetwork, _toolsTab == "network");
+        StyleToolsTab(ToolsTabUtility, _toolsTab == "utility");
+
+        switch (_toolsTab)
+        {
+            case "automation":
+                RefreshScriptList();
+                RefreshSchedulerList();
+                break;
+            case "network":
+                _ = RefreshDnsAndConnectionsAsync();
+                break;
+            case "utility":
+                RefreshClipboardList();
+                RefreshNotesList();
+                _ = RefreshAudioAsync();
+                break;
+        }
+    }
+
+    private void StyleToolsTab(Button button, bool active)
+    {
+        button.Background = active ? RowBorder : Brushes.Transparent;
+        button.Foreground = active ? _accentText : Muted;
+    }
+
+    private void BrowseScript_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Betik seç",
+            Filter = "Desteklenen|*.ps1;*.bat;*.cmd;*.py;*.exe|PowerShell|*.ps1|Python|*.py|Toplu iş|*.bat;*.cmd|Tüm dosyalar|*.*"
+        };
+
+        if (dialog.ShowDialog(this) == true)
+            ScriptPathBox.Text = dialog.FileName;
+    }
+
+    private void AddScript_Click(object sender, RoutedEventArgs e)
+    {
+        var path = ScriptPathBox.Text.Trim();
+        if (!File.Exists(path))
+        {
+            SetScriptStatus("dosya bulunamadı", StatusAmber);
+            return;
+        }
+
+        if (!ScriptRunner.IsSupported(path))
+        {
+            SetScriptStatus("desteklenmeyen tür (.ps1, .bat, .cmd, .py, .exe)", StatusRed);
+            return;
+        }
+
+        if (_settings.Scripts.Count >= 20)
+        {
+            SetScriptStatus("en fazla 20 betik eklenebilir", StatusAmber);
+            return;
+        }
+
+        var name = System.IO.Path.GetFileNameWithoutExtension(path);
+        _settings.Scripts.Add(new ScriptEntry
+        {
+            Name = name,
+            Path = path,
+            Arguments = ScriptArgsBox.Text.Trim()
+        });
+        SettingsStore.Save(_settings);
+
+        ScriptPathBox.Text = "";
+        ScriptArgsBox.Text = "";
+        SetScriptStatus($"{name} eklendi", StatusGreen);
+        RefreshScriptList();
+    }
+
+    private void SetScriptStatus(string text, Brush brush)
+    {
+        ScriptStatusText.Text = text;
+        ScriptStatusText.Foreground = brush;
+    }
+
+    private void RefreshScriptList()
+    {
+        ScriptList.Children.Clear();
+
+        if (_settings.Scripts.Count == 0)
+        {
+            ScriptList.Children.Add(HintText("henüz betik eklenmedi"));
+            return;
+        }
+
+        for (int i = 0; i < _settings.Scripts.Count; i++)
+        {
+            var entry = _settings.Scripts[i];
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            labels.Children.Add(new TextBlock
+            {
+                Text = $"{i + 1}. {entry.Name}",
+                FontSize = 10.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextSoft,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            labels.Children.Add(new TextBlock
+            {
+                Text = entry.Path,
+                FontSize = 8.5,
+                Foreground = Muted,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                ToolTip = entry.Path
+            });
+            if (!string.IsNullOrWhiteSpace(entry.Arguments))
+            {
+                labels.Children.Add(new TextBlock
+                {
+                    Text = "arg: " + entry.Arguments,
+                    FontSize = 8.5,
+                    Foreground = Muted,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+            }
+
+            var run = new Button
+            {
+                Content = "ÇALIŞTIR",
+                Style = (Style)FindResource("ChipButton"),
+                FontSize = 8.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = _accentText,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Tag = entry
+            };
+            AutomationProperties.SetName(run, $"{entry.Name} betiğini çalıştır");
+            AutomationProperties.SetAutomationId(run, $"ScriptRun_{i}");
+            run.Click += RunScript_Click;
+
+            var delete = new Button
+            {
+                Content = "SİL",
+                Style = (Style)FindResource("ChipButton"),
+                FontSize = 8.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = StatusRed,
+                Margin = new Thickness(7, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Tag = entry
+            };
+            AutomationProperties.SetName(delete, $"{entry.Name} betiğini kaldır");
+            AutomationProperties.SetAutomationId(delete, $"ScriptDelete_{i}");
+            delete.Click += DeleteScript_Click;
+
+            grid.Children.Add(labels);
+            Grid.SetColumn(run, 1);
+            grid.Children.Add(run);
+            Grid.SetColumn(delete, 2);
+            grid.Children.Add(delete);
+
+            ScriptList.Children.Add(CardRow(grid));
+        }
+    }
+
+    private void RunScript_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ScriptEntry entry })
+            RunScriptEntry(entry);
+    }
+
+    private void RunScriptEntry(ScriptEntry entry)
+    {
+        var (started, message) = ScriptRunner.Run(entry);
+        SetScriptStatus(message, started ? StatusGreen : StatusRed);
+        LastUpdateText.Text = message;
+
+        if (!started)
+            ShowBalloon("YEK Panel · Betik başlatılamadı", message, Forms.ToolTipIcon.Warning, force: true);
+    }
+
+    private void RunScriptByIndex(int index)
+    {
+        if (index < 0 || index >= _settings.Scripts.Count)
+            return;
+
+        RunScriptEntry(_settings.Scripts[index]);
+    }
+
+    private void DeleteScript_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ScriptEntry entry })
+            return;
+
+        _settings.Scripts.Remove(entry);
+        SettingsStore.Save(_settings);
+        SetScriptStatus($"{entry.Name} kaldırıldı", Muted);
+        RefreshScriptList();
+    }
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != (ModifierKeys.Control | ModifierKeys.Alt))
+            return;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        int index = key switch
+        {
+            >= Key.D1 and <= Key.D9 => (int)key - (int)Key.D1,
+            >= Key.NumPad1 and <= Key.NumPad9 => (int)key - (int)Key.NumPad1,
+            _ => -1
+        };
+
+        if (index < 0 || index >= _settings.Scripts.Count)
+            return;
+
+        e.Handled = true;
+        RunScriptByIndex(index);
+    }
+
+    private void SchedulerAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string action })
+            return;
+
+        _pendingSchedulerAction = ScheduledTask.Actions.Contains(action) ? action : "notify";
+        foreach (var (button, key) in new[]
+                 {
+                     (SchedActionScript, "script"),
+                     (SchedActionPing, "ping"),
+                     (SchedActionKill, "kill"),
+                     (SchedActionNotify, "notify")
+                 })
+        {
+            var active = key == _pendingSchedulerAction;
+            button.Background = active ? RowBorder : Brushes.Transparent;
+            button.Foreground = active ? _accentText : Muted;
+        }
+
+        SchedulerTargetLabel.Text = _pendingSchedulerAction switch
+        {
+            "script" => "HEDEF (BETİK ADI VEYA YOL)",
+            "ping" => "HEDEF (SUNUCU VEYA IP)",
+            "kill" => "HEDEF (UYGULAMA ADI)",
+            _ => "MESAJ"
+        };
+    }
+
+    private void AddScheduledTask_Click(object sender, RoutedEventArgs e)
+    {
+        var timeText = SchedulerTimeBox.Text.Trim();
+        if (!TimeSpan.TryParseExact(timeText, @"hh\:mm", CultureInfo.InvariantCulture, out var time))
+        {
+            SetSchedulerStatus("saat SS:DD biçiminde olmalı (örn. 23:30)", StatusAmber);
+            return;
+        }
+
+        var action = _pendingSchedulerAction;
+        var target = SchedulerTargetBox.Text.Trim();
+        if (action != "notify" && target.Length == 0)
+        {
+            SetSchedulerStatus("bu işlem için hedef gerekli", StatusAmber);
+            return;
+        }
+
+        if (_settings.ScheduledTasks.Count >= 30)
+        {
+            SetSchedulerStatus("en fazla 30 görev eklenebilir", StatusAmber);
+            return;
+        }
+
+        var name = SchedulerNameBox.Text.Trim();
+        if (name.Length == 0)
+            name = $"{ScheduledTask.ActionLabel(action)} {time:hh\\:mm}";
+
+        _settings.ScheduledTasks.Add(new ScheduledTask
+        {
+            Name = name,
+            Time = time.ToString(@"hh\:mm"),
+            Action = action,
+            Target = target,
+            Enabled = true
+        });
+        SettingsStore.Save(_settings);
+
+        SchedulerNameBox.Text = "";
+        SchedulerTargetBox.Text = "";
+        SetSchedulerStatus($"{name} eklendi · {time:hh\\:mm}", StatusGreen);
+        RefreshSchedulerList();
+    }
+
+    private void SetSchedulerStatus(string text, Brush brush)
+    {
+        SchedulerStatusText.Text = text;
+        SchedulerStatusText.Foreground = brush;
+    }
+
+    private void RefreshSchedulerList()
+    {
+        SchedulerList.Children.Clear();
+
+        if (_settings.ScheduledTasks.Count == 0)
+        {
+            SchedulerList.Children.Add(HintText("henüz zamanlanmış görev yok"));
+            return;
+        }
+
+        foreach (var task in _settings.ScheduledTasks
+                     .OrderBy(task => task.Time, StringComparer.Ordinal))
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            labels.Children.Add(new TextBlock
+            {
+                Text = $"{task.Time} · {task.Name}",
+                FontSize = 10.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextSoft,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            var detail = ScheduledTask.ActionLabel(task.Action);
+            if (!string.IsNullOrWhiteSpace(task.Target))
+                detail += " · " + task.Target;
+            if (!string.IsNullOrWhiteSpace(task.LastRunDate))
+                detail += " · son " + task.LastRunDate;
+            labels.Children.Add(new TextBlock
+            {
+                Text = detail,
+                FontSize = 8.5,
+                Foreground = Muted,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            var delete = new Button
+            {
+                Content = "SİL",
+                Style = (Style)FindResource("ChipButton"),
+                FontSize = 8.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = StatusRed,
+                Margin = new Thickness(7, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Tag = task
+            };
+            AutomationProperties.SetName(delete, $"{task.Name} görevini kaldır");
+            AutomationProperties.SetAutomationId(
+                delete, $"SchedulerDelete_{_settings.ScheduledTasks.IndexOf(task)}");
+            delete.Click += DeleteScheduledTask_Click;
+
+            grid.Children.Add(labels);
+            Grid.SetColumn(delete, 1);
+            grid.Children.Add(delete);
+
+            SchedulerList.Children.Add(CardRow(grid));
+        }
+    }
+
+    private void DeleteScheduledTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ScheduledTask task })
+            return;
+
+        _settings.ScheduledTasks.Remove(task);
+        SettingsStore.Save(_settings);
+        SetSchedulerStatus($"{task.Name} kaldırıldı", Muted);
+        RefreshSchedulerList();
+    }
+
+    private async Task RunScheduledTasksAsync()
+    {
+        if (_schedulerRunning)
+            return;
+
+        var due = SchedulerService.Due(_settings, DateTime.Now);
+        if (due.Count == 0)
+            return;
+
+        _schedulerRunning = true;
+        try
+        {
+            foreach (var task in due)
+            {
+                ScheduleResult result;
+                try
+                {
+                    result = await SchedulerService.ExecuteAsync(task, _settings);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("Scheduler", ex);
+                    result = new ScheduleResult(true, $"{task.Name}: {ex.Message}");
+                }
+
+                task.LastRunDate = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                SettingsStore.Save(_settings);
+
+                ShowBalloon(
+                    "YEK Panel · Zamanlanmış görev",
+                    result.Message,
+                    result.Alert ? Forms.ToolTipIcon.Warning : Forms.ToolTipIcon.Info,
+                    force: true);
+
+                if (result.Alert && _settings.SoundAlerts)
+                    SoundService.PlayWarning();
+
+                if (WebhookService.IsConfigured(_settings))
+                    _ = WebhookService.SendAsync(_settings, "Zamanlanmış görev: " + result.Message);
+
+                if (ToolsOverlay.Visibility == Visibility.Visible && _toolsTab == "automation")
+                    RefreshSchedulerList();
+
+                await Task.Delay(250);
+            }
+        }
+        finally
+        {
+            _schedulerRunning = false;
+        }
+    }
+
+    private async void TestWebhook_Click(object sender, RoutedEventArgs e)
+    {
+        if (_webhookTesting)
+            return;
+
+        _webhookTesting = true;
+        TestWebhookButton.IsEnabled = false;
+
+        var probe = new AppSettings
+        {
+            WebhookEnabled = true,
+            DiscordWebhookUrl = DiscordUrlBox.Text.Trim(),
+            TelegramBotToken = TelegramTokenBox.Text.Trim(),
+            TelegramChatId = TelegramChatIdBox.Text.Trim()
+        };
+
+        UpdateWebhookStatus("gönderiliyor…", Muted);
+
+        try
+        {
+            var (ok, message) = await WebhookService.SendAsync(
+                probe,
+                "YEK Panel webhook testi · " + DateTime.Now.ToString("dd.MM.yyyy HH:mm", Tr));
+
+            UpdateWebhookStatus(message, ok ? StatusGreen : StatusRed);
+        }
+        finally
+        {
+            _webhookTesting = false;
+            TestWebhookButton.IsEnabled = true;
+        }
+    }
+
+    private void UpdateWebhookStatus(string text, Brush brush)
+    {
+        WebhookStatusText.Text = text;
+        WebhookStatusText.Foreground = brush;
+        ToolsWebhookStatusText.Text = text;
+        ToolsWebhookStatusText.Foreground = brush;
+    }
+
+    private async Task RefreshDnsAndConnectionsAsync()
+    {
+        try
+        {
+            var current = await Task.Run(DnsService.GetCurrent);
+            DnsAdapterText.Text = current.Adapter;
+            DnsCurrentText.Text = current.Dns;
+        }
+        catch
+        {
+            DnsAdapterText.Text = "—";
+            DnsCurrentText.Text = "okunamadı";
+        }
+
+        DnsStatusText.Text = DnsService.IsAdministrator
+            ? "Yönetici izni hazır · değişiklik hemen uygulanır."
+            : "DNS değiştirmek için yönetici izni gerekir (tepsi > Yönetici olarak yeniden başlat).";
+        DnsStatusText.Foreground = DnsService.IsAdministrator ? StatusGreen : StatusAmber;
+
+        await RefreshConnectionsAsync();
+    }
+
+    private async void DnsApply_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string key })
+            return;
+
+        var adapter = DnsAdapterText.Text;
+        if (string.IsNullOrWhiteSpace(adapter) || adapter == "—")
+        {
+            DnsStatusText.Text = "aktif bağdaştırıcı bulunamadı";
+            DnsStatusText.Foreground = StatusRed;
+            return;
+        }
+
+        var provider = DnsService.Providers.FirstOrDefault(entry => entry.Key == key);
+        var servers = key == "auto" ? Array.Empty<string>() : provider?.Servers ?? Array.Empty<string>();
+
+        DnsStatusText.Text = "uygulanıyor…";
+        DnsStatusText.Foreground = Muted;
+
+        var (ok, message) = await Task.Run(() => DnsService.Apply(adapter, servers));
+        DnsStatusText.Text = message;
+        DnsStatusText.Foreground = ok ? StatusGreen : StatusRed;
+
+        if (ok)
+        {
+            DnsCurrentText.Text = key == "auto" ? "otomatik (DHCP)" : provider?.Name ?? message;
+            await RefreshConnectionsAsync();
+        }
+    }
+
+    private async void RefreshConnectionsTool_Click(object sender, RoutedEventArgs e) =>
+        await RefreshConnectionsAsync();
+
+    private async void ConnectionsFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded)
+            return;
+
+        await RefreshConnectionsAsync();
+    }
+
+    private async Task RefreshConnectionsAsync()
+    {
+        if (_connectionsLoading || ToolsNetworkScroll.Visibility != Visibility.Visible)
+            return;
+
+        _connectionsLoading = true;
+        ConnectionsStatusText.Text = "bağlantılar okunuyor…";
+        ConnectionsStatusText.Foreground = Muted;
+
+        try
+        {
+            var established = ConnectionsEstablishedCheck.IsChecked == true;
+            var entries = await Task.Run(() => ConnectionService.GetConnections(established));
+            FillConnectionList(entries);
+            ConnectionsStatusText.Text =
+                $"{entries.Count} bağlantı · " +
+                (established ? "kurulu" : "tümü") +
+                $" · {DateTime.Now.ToString("HH:mm:ss", Tr)}";
+            ConnectionsStatusText.Foreground = StatusGreen;
+        }
+        catch
+        {
+            ConnectionsStatusText.Text = "bağlantı listesi alınamadı";
+            ConnectionsStatusText.Foreground = StatusRed;
+        }
+        finally
+        {
+            _connectionsLoading = false;
+        }
+    }
+
+    private void FillConnectionList(IReadOnlyList<ConnectionEntry> entries)
+    {
+        ConnectionList.Children.Clear();
+
+        if (entries.Count == 0)
+        {
+            ConnectionList.Children.Add(HintText("bağlantı bulunamadı"));
+            return;
+        }
+
+        const int limit = 60;
+        foreach (var entry in entries.Take(limit))
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            labels.Children.Add(new TextBlock
+            {
+                Text = entry.Process,
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextSoft,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            labels.Children.Add(new TextBlock
+            {
+                Text = entry.Listening
+                    ? $"dinliyor · {entry.Local}"
+                    : $"{entry.Local} → {entry.Remote}",
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 8.3,
+                Foreground = Muted,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            var state = new TextBlock
+            {
+                Text = entry.State,
+                FontSize = 8,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = entry.State == "ESTABLISHED" ? StatusGreen : Muted,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 0, 0)
+            };
+
+            grid.Children.Add(labels);
+            Grid.SetColumn(state, 1);
+            grid.Children.Add(state);
+
+            var row = CardRow(grid);
+            row.ToolTip = $"PID {entry.Pid}\n{entry.Local} → {entry.Remote}\n{entry.State}";
+            ConnectionList.Children.Add(row);
+        }
+
+        if (entries.Count > limit)
+            ConnectionList.Children.Add(HintText($"ilk {limit} / {entries.Count} bağlantı gösteriliyor"));
+    }
+
+    private void CaptureClipboard()
+    {
+        if (!_settings.ClipboardHistoryEnabled)
+            return;
+
+        try
+        {
+            if (!Clipboard.ContainsText())
+                return;
+
+            var text = Clipboard.GetText();
+            if (string.IsNullOrWhiteSpace(text) || text == _clipboardIgnore)
+                return;
+
+            _clipboard.Capture(text);
+        }
+        catch
+        {
+            // Pano başka bir uygulama tarafından kilitliyse sonraki turda denenir.
+        }
+    }
+
+    private void RefreshClipboardList()
+    {
+        if (ToolsUtilityScroll == null || ToolsUtilityScroll.Visibility != Visibility.Visible)
+            return;
+
+        ClipboardList.Children.Clear();
+
+        if (!_settings.ClipboardHistoryEnabled)
+        {
+            ClipboardList.Children.Add(HintText("pano geçmişi kapalı · Ayarlar > Bildirim & bakım"));
+            return;
+        }
+
+        var items = _clipboard.Items;
+        if (items.Count == 0)
+        {
+            ClipboardList.Children.Add(HintText("kopyaladığınız metinler burada görünür"));
+            return;
+        }
+
+        foreach (var entry in items)
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var labels = new StackPanel();
+            labels.Children.Add(new TextBlock
+            {
+                Text = ClipboardHistory.Preview(entry.Text),
+                FontSize = 10,
+                Foreground = TextSoft,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            labels.Children.Add(new TextBlock
+            {
+                Text = entry.Time.ToString("HH:mm:ss", Tr),
+                FontSize = 8,
+                Foreground = Muted
+            });
+
+            var hint = new TextBlock
+            {
+                Text = "KOPYALA",
+                FontSize = 8,
+                FontWeight = FontWeights.Bold,
+                Foreground = _accentText,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 0, 0)
+            };
+
+            grid.Children.Add(labels);
+            Grid.SetColumn(hint, 1);
+            grid.Children.Add(hint);
+
+            var row = CardRow(grid);
+            row.Tag = entry.Text;
+            row.Cursor = Cursors.Hand;
+            row.ToolTip = entry.Text;
+            row.MouseLeftButtonUp += ClipboardItem_Click;
+            ClipboardList.Children.Add(row);
+        }
+    }
+
+    private void ClipboardItem_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Border { Tag: string text })
+            return;
+
+        try
+        {
+            _clipboardIgnore = text;
+            Clipboard.SetText(text);
+            LastUpdateText.Text = "pano metni kopyalandı";
+        }
+        catch
+        {
+            LastUpdateText.Text = "panoya yazılamadı";
+        }
+    }
+
+    private void ClipboardClear_Click(object sender, RoutedEventArgs e)
+    {
+        _clipboard.Clear();
+        RefreshClipboardList();
+    }
+
+    private void NoteNew_Click(object sender, RoutedEventArgs e)
+    {
+        _editingNoteId = null;
+        NoteTitleBox.Text = "";
+        NoteEditorBox.Text = "";
+        NoteEditorStatus.Text = "yeni not · başlık boşsa tarih kullanılır";
+        NoteEditorStatus.Foreground = Muted;
+        NoteTitleBox.Focus();
+    }
+
+    private void NoteSave_Click(object sender, RoutedEventArgs e)
+    {
+        var title = NoteTitleBox.Text.Trim();
+        if (title.Length == 0)
+            title = "Not " + DateTime.Now.ToString("dd.MM.yyyy HH:mm", Tr);
+
+        var content = NoteEditorBox.Text;
+        if (content.Trim().Length == 0)
+        {
+            NoteEditorStatus.Text = "not içeriği boş";
+            NoteEditorStatus.Foreground = StatusAmber;
+            return;
+        }
+
+        var note = NotesService.Get(_editingNoteId);
+        if (note == null)
+        {
+            note = NotesService.Create(title);
+            _editingNoteId = note.Id;
+        }
+
+        NotesService.Update(note, title, content);
+        NoteTitleBox.Text = note.Title;
+        NoteEditorStatus.Text = $"kaydedildi · {DateTime.Now.ToString("HH:mm:ss", Tr)}";
+        NoteEditorStatus.Foreground = StatusGreen;
+        RefreshNotesList();
+    }
+
+    private void RefreshNotesList()
+    {
+        NotesList.Children.Clear();
+
+        var notes = NotesService.All;
+        if (notes.Count == 0)
+        {
+            NotesList.Children.Add(HintText("henüz not yok"));
+            return;
+        }
+
+        foreach (var note in notes.OrderByDescending(note => note.Updated))
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            labels.Children.Add(new TextBlock
+            {
+                Text = note.Title,
+                FontSize = 10.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextSoft,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            labels.Children.Add(new TextBlock
+            {
+                Text = note.Updated.ToString("dd.MM HH:mm", Tr) + " · " +
+                       ClipboardHistory.Preview(note.Content, 44),
+                FontSize = 8.5,
+                Foreground = Muted,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            actions.Children.Add(NoteAction("AÇ", note, NoteEdit_Click));
+            actions.Children.Add(NoteAction(".TXT", note, NoteExportRow_Click));
+            actions.Children.Add(NoteAction(".MD", note, NoteExportRow_Click));
+            actions.Children.Add(NoteAction("SİL", note, NoteDelete_Click));
+
+            grid.Children.Add(labels);
+            Grid.SetColumn(actions, 1);
+            grid.Children.Add(actions);
+
+            NotesList.Children.Add(CardRow(grid));
+        }
+    }
+
+    private Button NoteAction(string text, NoteItem note, RoutedEventHandler handler)
+    {
+        var button = new Button
+        {
+            Content = text,
+            Style = (Style)FindResource("ChipButton"),
+            FontSize = 8,
+            FontWeight = FontWeights.Bold,
+            Foreground = text == "SİL" ? StatusRed : _accentText,
+            Margin = new Thickness(6, 0, 0, 0),
+            Tag = note
+        };
+
+        if (text == ".TXT")
+            button.Tag = (note, false);
+        else if (text == ".MD")
+            button.Tag = (note, true);
+
+        AutomationProperties.SetName(button, $"{note.Title} {text}");
+        button.Click += handler;
+        return button;
+    }
+
+    private void NoteEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: NoteItem note })
+            return;
+
+        _editingNoteId = note.Id;
+        NoteTitleBox.Text = note.Title;
+        NoteEditorBox.Text = note.Content;
+        NoteEditorStatus.Text = "düzenleniyor · " + note.Updated.ToString("dd.MM.yyyy HH:mm", Tr);
+        NoteEditorStatus.Foreground = Muted;
+    }
+
+    private void NoteDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: NoteItem note })
+            return;
+
+        var answer = MessageBox.Show(
+            this,
+            $"\"{note.Title}\" notu silinsin mi?",
+            "YEK Panel · Notu sil",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        NotesService.Delete(note.Id);
+        if (_editingNoteId == note.Id)
+            NoteNew_Click(sender, e);
+        RefreshNotesList();
+    }
+
+    private void NoteExportTxt_Click(object sender, RoutedEventArgs e) => ExportEditedNote(markdown: false);
+
+    private void NoteExportMd_Click(object sender, RoutedEventArgs e) => ExportEditedNote(markdown: true);
+
+    private void NoteExportRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: (NoteItem note, bool markdown) })
+            return;
+
+        ExportNote(note, markdown);
+    }
+
+    private void ExportEditedNote(bool markdown)
+    {
+        var note = NotesService.Get(_editingNoteId);
+        if (note == null)
+        {
+            NoteEditorStatus.Text = "önce notu kaydedin";
+            NoteEditorStatus.Foreground = StatusAmber;
+            return;
+        }
+
+        ExportNote(note, markdown);
+    }
+
+    private void ExportNote(NoteItem note, bool markdown)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Notu dışa aktar",
+            FileName = SanitizeFileName(note.Title),
+            DefaultExt = markdown ? ".md" : ".txt",
+            Filter = markdown ? "Markdown|*.md|Tüm dosyalar|*.*" : "Metin|*.txt|Tüm dosyalar|*.*"
+        };
+
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            var path = NotesService.Export(note, markdown, dialog.FileName);
+            NoteEditorStatus.Text = "dışa aktarıldı · " + path;
+            NoteEditorStatus.Foreground = StatusGreen;
+        }
+        catch (Exception ex)
+        {
+            NoteEditorStatus.Text = "dışa aktarılamadı · " + ex.Message;
+            NoteEditorStatus.Foreground = StatusRed;
+        }
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        var clean = new string(name.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return clean.Length == 0 ? "not" : clean;
+    }
+
+    private async void AudioRefresh_Click(object sender, RoutedEventArgs e) => await RefreshAudioAsync();
+
+    private async Task RefreshAudioAsync()
+    {
+        AudioStatusText.Text = "ses cihazları okunuyor…";
+        AudioStatusText.Foreground = Muted;
+
+        try
+        {
+            var (outputs, inputs) = await Task.Run(() =>
+                (AudioService.GetOutputs(), AudioService.GetInputs()));
+
+            FillAudioList(AudioOutputList, outputs, output: true);
+            FillAudioList(AudioInputList, inputs, output: false);
+
+            AudioStatusText.Text = $"{outputs.Count} çıkış · {inputs.Count} giriş · " +
+                                   DateTime.Now.ToString("HH:mm:ss", Tr);
+            AudioStatusText.Foreground = StatusGreen;
+        }
+        catch
+        {
+            AudioStatusText.Text = "ses cihazları okunamadı";
+            AudioStatusText.Foreground = StatusRed;
+        }
+    }
+
+    private void FillAudioList(Panel target, IReadOnlyList<AudioDevice> devices, bool output)
+    {
+        target.Children.Clear();
+
+        if (devices.Count == 0)
+        {
+            target.Children.Add(HintText("cihaz bulunamadı"));
+            return;
+        }
+
+        foreach (var device in devices)
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var name = new TextBlock
+            {
+                Text = device.Name,
+                FontSize = 10,
+                Foreground = device.IsDefault ? TextSoft : Muted,
+                FontWeight = device.IsDefault ? FontWeights.SemiBold : FontWeights.Normal,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = device.Name
+            };
+
+            var action = new Button
+            {
+                Content = device.IsDefault ? "VARSAYILAN" : "SEÇ",
+                Style = (Style)FindResource("ChipButton"),
+                FontSize = 8,
+                FontWeight = FontWeights.Bold,
+                Foreground = device.IsDefault ? StatusGreen : _accentText,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                IsEnabled = !device.IsDefault,
+                Tag = new AudioTarget(device.Id, output)
+            };
+            AutomationProperties.SetName(action, $"{device.Name} cihazını varsayılan yap");
+            action.Click += SetAudioDefault_Click;
+
+            grid.Children.Add(name);
+            Grid.SetColumn(action, 1);
+            grid.Children.Add(action);
+
+            target.Children.Add(CardRow(grid));
+        }
+    }
+
+    private async void SetAudioDefault_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: AudioTarget target })
+            return;
+
+        var (ok, message) = AudioService.SetDefault(target.Id, target.Output);
+        AudioStatusText.Text = message;
+        AudioStatusText.Foreground = ok ? StatusGreen : StatusRed;
+
+        if (ok)
+            await RefreshAudioAsync();
+    }
+
+    private Border CardRow(UIElement content) => new()
+    {
+        Background = RowBg,
+        BorderBrush = RowBorder,
+        BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(8),
+        Padding = new Thickness(8, 5, 8, 5),
+        Margin = new Thickness(0, 0, 0, 4),
+        Child = content
+    };
+
+    private TextBlock HintText(string text) => new()
+    {
+        Text = text,
+        FontSize = 9,
+        Foreground = Muted,
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(1, 2, 0, 6)
+    };
+
+    private sealed record AudioTarget(string Id, bool Output);
+
     private sealed class ServerRow
     {
         public required Border Root { get; init; }
@@ -2877,5 +4262,5 @@ public partial class MainWindow : Window
         public int LastState { get; set; }
     }
 
-    private sealed record ProcessRow(TextBlock Name, TextBlock Value);
+    private sealed record ProcessRow(TextBlock Name, TextBlock Value, Button Kill);
 }
