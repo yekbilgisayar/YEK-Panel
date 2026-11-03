@@ -1,0 +1,49 @@
+YEK PANEL — Google Play mağaza metinleri (Android 1.2.1)
+=========================================================
+
+Uygulama adı (en fazla 30 karakter)
+-----------------------------------
+YEK Panel — Sistem Paneli
+
+
+Kısa açıklama (en fazla 80 karakter)
+------------------------------------
+Pil, CPU, ağ ve sensörleri izleyin; PC'nizi aynı ağdan canlı takip edin.
+
+
+Tam açıklama (en fazla 4000 karakter)
+-------------------------------------
+YEK Panel, Android cihazınızın sistem durumunu tek ekranda toplayan sade ve reklamsız bir sistem panelidir. Pil, işlemci, bellek, depolama, ağ ve sensör bilgilerini canlı olarak izleyin; isterseniz aynı yerel ağdaki Windows bilgisayarınızı da telefondan takip edin.
+
+ÖNE ÇIKANLAR
+• Pil durumu: şarj yüzdesi, sıcaklık, voltaj, akım, sağlık, teknoloji ve şarj sayacı
+• İşlemci: çekirdek sayısı, anlık yük ve ortalama frekans
+• Bellek ve depolama: kullanılan/toplam alan ve doluluk oranı
+• Ağ: Wi-Fi/mobil bağlantı durumu, indirme-yükleme hızı ve gecikme grafiği
+• Sensörler: cihazda bulunan sensörlerin canlı değerleri
+• Ayarlanabilir pil ve sıcaklık eşikleri; isteğe bağlı bildirimler
+• Sessiz saatler: belirlediğiniz aralıkta uyarı bildirimi gösterilmez
+• 2, 5 veya 10 saniyelik yenileme sıklığı
+
+PC BAĞLANTISI (YEREL AĞ)
+Windows için YEK Panel uygulamasını aynı Wi-Fi ağında açın; Ayarlar > PC BAĞLANTISI bölümünde görünen IP adresi ve 6 haneli PIN ile bağlanın. Telefonunuz bilgisayarın CPU, RAM, disk, ağ, pil ve en yoğun işlem bilgilerini canlı gösterir. Bağlantı yalnızca yerel ağda çalışır; internet üzerinden dışarıya veri gönderilmez. PIN yanlış girilirse art arda denemeler geçici olarak kilitlenir.
+
+ARAÇLAR
+• Ping testi: Cloudflare, Google ve Quad9 hedefleriyle gecikme ölçümü
+• Hız testi: indirme hızını yaklaşık 8 MB veriyle ölçme
+• Ağ tanılama: DNS çözümleme süresi ve TCP port erişim testi
+• Sunucu izleme: eklediğiniz adreslerin durumunu ve gecikmesini takip etme
+• Notlar ve hatırlatıcılar
+• Yedekleme ve geri yükleme: ayarlarınızı tek dosyada saklayın
+• Tanılama bilgisini kopyalama ve paylaşma
+
+GİZLİLİK
+• Hesap oluşturmanız gerekmez; reklam ve analiz aracı yoktur.
+• Notlar, hatırlatıcılar ve ayarlar yalnızca cihazınızda saklanır.
+• PC bağlantısı yalnızca yerel ağdadır; PIN ve sistem bilgileri dışarıya gönderilmez.
+
+GEREKSİNİMLER
+• Android 8.0 (API 26) veya üzeri
+• PC bağlantısı için aynı ağda Windows 10/11 üzerinde YEK Panel masaüstü uygulaması
+
+YEK BİLGİSAYAR tarafından geliştirilmiştir.

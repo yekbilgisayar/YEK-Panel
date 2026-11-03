@@ -117,11 +117,12 @@ public partial class MainWindow : Window
     private bool _ramAlertActive;
     private bool _schedulerRunning;
     private bool _connectionsLoading;
-    private bool _webhookTesting;
+    private readonly BridgeServer _bridge;
 
     public MainWindow()
     {
         InitializeComponent();
+        _bridge = new BridgeServer(() => _sensors.Read().Cpu);
         _settings = SettingsStore.Load();
         ApplyAccent(_settings.Accent, persist: false);
         Opacity = _settings.WindowOpacity;
@@ -192,6 +193,7 @@ public partial class MainWindow : Window
             _ = UpdateTemperaturesAsync();
             _ = RefreshPublicIpAsync();
             _ = RefreshConnectionAsync(force: true);
+            StartBridgeIfEnabled();
             _ = MaybeCheckUpdatesAsync();
 
             if (_settings.RememberMini && _settings.MiniMode)
@@ -555,7 +557,6 @@ public partial class MainWindow : Window
             var text = $"{name} kapatıldı ({killed} süreç)";
             LastUpdateText.Text = text;
             ShowBalloon("YEK Panel · Süreç kapandı", text, Forms.ToolTipIcon.Info);
-            _ = WebhookService.SendAsync(_settings, "Süreç kapandı: " + text);
         }
         else
         {
@@ -1103,9 +1104,6 @@ public partial class MainWindow : Window
             ? $"{name} tekrar yanıt veriyor."
             : $"{name} şu anda yanıt vermiyor.";
 
-        if (WebhookService.IsConfigured(_settings) && !IsQuietHours(DateTime.Now))
-            _ = WebhookService.SendAsync(_settings, recovered ? "Sunucu düzeldi: " + text : "Sunucu sorunu: " + text);
-
         if (!_settings.NotificationsEnabled || IsQuietHours(DateTime.Now))
             return;
 
@@ -1617,6 +1615,7 @@ public partial class MainWindow : Window
         _clipboardTimer.Stop();
         _schedulerTimer.Stop();
         _stopwatch.Stop();
+        _bridge.Dispose();
         _sensors.Dispose();
 
         if (_tray != null)
@@ -1926,8 +1925,6 @@ public partial class MainWindow : Window
             ShowBalloon("YEK Panel · CPU sıcaklığı", text, Forms.ToolTipIcon.Warning, force: true);
             if (_settings.SoundAlerts)
                 SoundService.PlayWarning();
-            if (WebhookService.IsConfigured(_settings))
-                _ = WebhookService.SendAsync(_settings, "Donanım uyarısı: " + text);
         }
         else if (celsius < threshold - 3)
         {
@@ -1958,8 +1955,6 @@ public partial class MainWindow : Window
             ShowBalloon("YEK Panel · RAM kullanımı", text, Forms.ToolTipIcon.Warning, force: true);
             if (_settings.SoundAlerts)
                 SoundService.PlayWarning();
-            if (WebhookService.IsConfigured(_settings))
-                _ = WebhookService.SendAsync(_settings, "Donanım uyarısı: " + text);
         }
         else if (_lastRamPercent < threshold - 3)
         {
@@ -2285,11 +2280,12 @@ public partial class MainWindow : Window
         RamAlertBox.Text = _settings.RamAlertPercent.ToString(Tr);
         SoundAlertsCheck.IsChecked = _settings.SoundAlerts;
         ClipboardHistoryCheck.IsChecked = _settings.ClipboardHistoryEnabled;
-        WebhookEnabledCheck.IsChecked = _settings.WebhookEnabled;
-        DiscordUrlBox.Text = _settings.DiscordWebhookUrl;
-        TelegramTokenBox.Text = _settings.TelegramBotToken;
-        TelegramChatIdBox.Text = _settings.TelegramChatId;
-        WebhookStatusText.Text = "";
+        BridgeEnabledCheck.IsChecked = _settings.BridgeEnabled;
+        BridgePortBox.Text = _settings.BridgePort.ToString(Tr);
+        if (!IsValidBridgePin(_settings.BridgePin))
+            _settings.BridgePin = BridgeServer.NewPin();
+        BridgePinBox.Text = _settings.BridgePin;
+        UpdateBridgeUi();
 
         _pendingCardOrder.Clear();
         _pendingCardOrder.AddRange(_settings.CardOrder
@@ -2368,10 +2364,11 @@ public partial class MainWindow : Window
             _settings.RamAlertPercent = Math.Clamp(ramLimit, 50, 100);
         _settings.SoundAlerts = SoundAlertsCheck.IsChecked == true;
         _settings.ClipboardHistoryEnabled = ClipboardHistoryCheck.IsChecked == true;
-        _settings.WebhookEnabled = WebhookEnabledCheck.IsChecked == true;
-        _settings.DiscordWebhookUrl = DiscordUrlBox.Text.Trim();
-        _settings.TelegramBotToken = TelegramTokenBox.Text.Trim();
-        _settings.TelegramChatId = TelegramChatIdBox.Text.Trim();
+        _settings.BridgeEnabled = BridgeEnabledCheck.IsChecked == true;
+        if (int.TryParse(BridgePortBox.Text.Trim(), NumberStyles.Integer, Tr, out var bridgePort))
+            _settings.BridgePort = Math.Clamp(bridgePort, 1024, 65535);
+        var bridgePin = BridgePinBox.Text.Trim();
+        _settings.BridgePin = IsValidBridgePin(bridgePin) ? bridgePin : BridgeServer.NewPin();
         _settings.CardOrder = string.Join(",", _pendingCardOrder);
         var hiddenCards = new List<string>();
         if (ShowComputerCheck.IsChecked != true)
@@ -2386,6 +2383,7 @@ public partial class MainWindow : Window
         _settings.Accent = _selectedAccent;
 
         SettingsStore.Save(_settings);
+        ApplyBridgeSettings();
         ApplyStartupSetting();
         ApplyAccent(_settings.Accent, persist: false);
         ApplyCardLayout();
@@ -2554,10 +2552,7 @@ public partial class MainWindow : Window
 
         NoteBox.Text = _settings.QuickNote;
         ToolPublicIpText.Text = _publicIp;
-        DiscordUrlBox.Text = _settings.DiscordWebhookUrl;
-        TelegramTokenBox.Text = _settings.TelegramBotToken;
-        TelegramChatIdBox.Text = _settings.TelegramChatId;
-        WebhookEnabledCheck.IsChecked = _settings.WebhookEnabled;
+        UpdateBridgeUi();
 
         if (ToolsHost.Text.Trim().Length == 0 &&
             Uri.TryCreate(UrlAt(0), UriKind.Absolute, out var first) &&
@@ -3603,9 +3598,6 @@ public partial class MainWindow : Window
                 if (result.Alert && _settings.SoundAlerts)
                     SoundService.PlayWarning();
 
-                if (WebhookService.IsConfigured(_settings))
-                    _ = WebhookService.SendAsync(_settings, "Zamanlanmış görev: " + result.Message);
-
                 if (ToolsOverlay.Visibility == Visibility.Visible && _toolsTab == "automation")
                     RefreshSchedulerList();
 
@@ -3618,45 +3610,117 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void TestWebhook_Click(object sender, RoutedEventArgs e)
+    private static bool IsValidBridgePin(string? pin) =>
+        pin is { Length: 6 } && pin.All(char.IsDigit);
+
+    private void StartBridgeIfEnabled()
     {
-        if (_webhookTesting)
-            return;
-
-        _webhookTesting = true;
-        TestWebhookButton.IsEnabled = false;
-
-        var probe = new AppSettings
+        if (_settings.BridgeEnabled)
         {
-            WebhookEnabled = true,
-            DiscordWebhookUrl = DiscordUrlBox.Text.Trim(),
-            TelegramBotToken = TelegramTokenBox.Text.Trim(),
-            TelegramChatId = TelegramChatIdBox.Text.Trim()
-        };
-
-        UpdateWebhookStatus("gönderiliyor…", Muted);
-
-        try
-        {
-            var (ok, message) = await WebhookService.SendAsync(
-                probe,
-                "YEK Panel webhook testi · " + DateTime.Now.ToString("dd.MM.yyyy HH:mm", Tr));
-
-            UpdateWebhookStatus(message, ok ? StatusGreen : StatusRed);
+            if (!IsValidBridgePin(_settings.BridgePin))
+                _settings.BridgePin = BridgeServer.NewPin();
+            _bridge.Start(_settings.BridgePort, _settings.BridgePin);
+            SettingsStore.Save(_settings);
         }
-        finally
+
+        UpdateBridgeUi();
+    }
+
+    private void ApplyBridgeSettings()
+    {
+        if (!_settings.BridgeEnabled)
         {
-            _webhookTesting = false;
-            TestWebhookButton.IsEnabled = true;
+            _bridge.Stop();
+            UpdateBridgeUi();
+            return;
+        }
+
+        if (!IsValidBridgePin(_settings.BridgePin))
+            _settings.BridgePin = BridgeServer.NewPin();
+
+        if (_bridge.IsRunning &&
+            _bridge.Port == _settings.BridgePort &&
+            _bridge.Pin == _settings.BridgePin)
+        {
+            UpdateBridgeUi();
+            return;
+        }
+
+        _bridge.Start(_settings.BridgePort, _settings.BridgePin);
+        SettingsStore.Save(_settings);
+        UpdateBridgeUi();
+    }
+
+    private void UpdateBridgeUi()
+    {
+        var running = _bridge.IsRunning;
+        var primary = BridgeServer.LocalAddresses().FirstOrDefault() ?? "—";
+        var address = $"http://{primary}:{_bridge.Port}";
+
+        if (BridgeStatusText != null)
+        {
+            if (running)
+            {
+                BridgeStatusText.Text = $"Dinleniyor · {address} · PIN {_bridge.Pin}";
+                BridgeStatusText.Foreground = StatusGreen;
+            }
+            else if (!string.IsNullOrWhiteSpace(_bridge.LastError))
+            {
+                BridgeStatusText.Text = _bridge.LastError;
+                BridgeStatusText.Foreground = StatusRed;
+            }
+            else
+            {
+                BridgeStatusText.Text = "Kapalı. Android bağlantısı için açın.";
+                BridgeStatusText.Foreground = Muted;
+            }
+        }
+
+        if (ToolsBridgeText != null)
+        {
+            ToolsBridgeText.Text = running
+                ? $"Açık · {address} · PIN {_bridge.Pin}"
+                : "Android bağlantısı kapalı. Ayarlar > PC Bağlantısı bölümünden açın.";
+        }
+
+        if (ToolsBridgeStatusText != null)
+        {
+            ToolsBridgeStatusText.Text = running
+                ? _bridge.Warning ?? "Telefonda PC sekmesine bu adresi ve PIN'i girin."
+                : _bridge.LastError ?? "";
         }
     }
 
-    private void UpdateWebhookStatus(string text, Brush brush)
+    private void BridgeNewPin_Click(object sender, RoutedEventArgs e)
     {
-        WebhookStatusText.Text = text;
-        WebhookStatusText.Foreground = brush;
-        ToolsWebhookStatusText.Text = text;
-        ToolsWebhookStatusText.Foreground = brush;
+        BridgePinBox.Text = BridgeServer.NewPin();
+        BridgeStatusText.Text = "Yeni PIN hazır. Uygulamak için KAYDET'e basın.";
+        BridgeStatusText.Foreground = StatusAmber;
+    }
+
+    private void BridgeCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_bridge.IsRunning)
+        {
+            ToolsBridgeStatusText.Text = "Bağlantı kapalı; önce ayarlardan açın.";
+            BridgeStatusText.Text = "Bağlantı kapalı; önce açın ve KAYDET'e basın.";
+            BridgeStatusText.Foreground = StatusAmber;
+            return;
+        }
+
+        var primary = BridgeServer.LocalAddresses().FirstOrDefault() ?? "—";
+        var text = $"YEK Panel PC: http://{primary}:{_bridge.Port}\nPIN: {_bridge.Pin}";
+        try
+        {
+            Clipboard.SetText(text);
+            ToolsBridgeStatusText.Text = "Bağlantı bilgisi panoya kopyalandı.";
+            BridgeStatusText.Text = "Bağlantı bilgisi panoya kopyalandı.";
+            BridgeStatusText.Foreground = StatusGreen;
+        }
+        catch
+        {
+            ToolsBridgeStatusText.Text = "Panoya kopyalanamadı.";
+        }
     }
 
     private async Task RefreshDnsAndConnectionsAsync()

@@ -1,7 +1,11 @@
 # .NET derleme çıktıları
 bin/
+bin*/
 obj/
+obj*/
 publish/
+release/build-*/
+release/publish/
 *.user
 .vs/
 

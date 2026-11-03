@@ -32,7 +32,7 @@ public final class SettingsBackup {
         try {
             root.put("app", APP);
             root.put("schema", SCHEMA);
-            root.put("version", "1.2.0");
+            root.put("version", "1.2.1");
             root.put("exportedAt", System.currentTimeMillis());
 
             SharedPreferences prefs =

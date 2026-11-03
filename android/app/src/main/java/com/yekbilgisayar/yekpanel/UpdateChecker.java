@@ -21,9 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
- * Android sürümünü GitHub Releases üzerinden denetler. Play Store yayını
- * hazır olana kadar APK doğrudan depodan indirilir; kurulum onayı kullanıcıya
- * aittir (Android sessiz kuruluma izin vermez).
+ * Android sürümünü GitHub Releases üzerinden denetler. Bu akış yalnızca
+ * doğrudan APK olarak kurulan (sideload) sürüm içindir; Play sürümünde
+ * MainActivity güncellemeleri Google Play'e yönlendirir.
  */
 public final class UpdateChecker {
 

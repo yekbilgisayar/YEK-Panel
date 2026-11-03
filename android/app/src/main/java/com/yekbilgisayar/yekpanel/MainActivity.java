@@ -84,7 +84,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private static final long ALERT_COOLDOWN = 30L * 60L * 1000L;
     private static final long SERVER_CHECK_INTERVAL = 60L * 1000L;
-    private static final String VERSION = "1.2.0";
+    private static final String VERSION = "1.2.1";
 
     private int BG;
     private int ELEVATED;
@@ -608,7 +608,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             maybeCheckServers();
         } else if (index == 1) {
             if (pcHost.isEmpty() || pcPin.isEmpty()) {
-                setPcStatus("PC köprüsünü çalıştırıp IP ve PIN girin", MUTED);
+                setPcStatus("Windows YEK Panel'de PC Bağlantısı'nı açıp IP ve PIN girin", MUTED);
             } else if (!pcConnected) {
                 if (pcAuto) {
                     connectPc(false);
@@ -1028,10 +1028,10 @@ public class MainActivity extends Activity implements SensorEventListener {
         c.addView(sectionHeader("PC BAĞLANTISI", pcStateChip));
 
         LinearLayout connectCard = card();
-        connectCard.addView(cardHeader("PC KÖPRÜSÜ", chip("LAN · PIN", ACCENT)));
-        TextView connectDesc = text("Windows bilgisayardaki YEK Panel PC Köprüsü'nü "
-                + "çalıştırın; ekranda görünen IP adresi ve 6 haneli PIN ile bağlanın. "
-                + "Bağlantı yalnızca yerel ağda çalışır.", 11, MUTED, false);
+        connectCard.addView(cardHeader("YEK PANEL (WINDOWS)", chip("LAN · PIN", ACCENT)));
+        TextView connectDesc = text("Windows'taki YEK Panel uygulamasında Ayarlar > "
+                + "PC BAĞLANTISI bölümünü açın; ekranda görünen IP adresi ve 6 haneli PIN "
+                + "ile bağlanın. Bağlantı yalnızca yerel ağda çalışır.", 11, MUTED, false);
         connectDesc.setPadding(0, dp(8), 0, dp(4));
         connectDesc.setLineSpacing(dp(3), 1f);
         connectCard.addView(connectDesc);
@@ -1106,7 +1106,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         pcConnectState.setPadding(0, dp(9), 0, 0);
         pcConnectState.setLineSpacing(dp(2), 1f);
         connectCard.addView(pcConnectState);
-        setPcStatus(pcConnected ? "Bağlı" : "PC köprüsünü çalıştırıp IP ve PIN girin",
+        setPcStatus(pcConnected ? "Bağlı" : "Windows YEK Panel'de PC Bağlantısı'nı açıp IP ve PIN girin",
                 pcConnected ? GREEN : MUTED);
         addCard(c, connectCard);
 
@@ -1172,12 +1172,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         LinearLayout helpCard = card();
         helpCard.addView(cardHeader("NASIL ÇALIŞIR?", null));
         String[] steps = {
-                "1. Windows'ta pc-bridge klasöründeki YekPanelBridge.ps1 dosyasını çalıştırın.",
-                "2. Ekranda görünen IP adresini ve 6 haneli PIN'i bu sayfaya girin.",
+                "1. Windows'ta YEK Panel uygulamasını açın.",
+                "2. Ayarlar > PC BAĞLANTISI bölümünde bağlantıyı açın; varsayılan port 8787'dir.",
                 "3. Telefon ile bilgisayar aynı Wi-Fi ağında olmalıdır.",
-                "4. PC Köprüsü yerel ağ için ayrı bir yardımcıdır; masaüstü YEK Panel "
-                        + "uygulamasının ayarlarını değiştirmez.",
-                "5. Veriler internete gönderilmez; PIN yalnızca yerel ağda doğrulanır."
+                "4. Ekranda görünen IP adresini ve 6 haneli PIN'i bu sayfaya girin; "
+                        + "PC'Yİ BUL ile otomatik arama yapabilirsiniz.",
+                "5. Veriler internete gönderilmez; 5 hatalı PIN denemesinde bağlantı 1 dakika kilitlenir."
         };
         for (String step : steps) {
             TextView item = text(step, 11, MUTED, false);
@@ -1256,7 +1256,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         if (!pcPin.matches("\\d{6}")) {
             setPcState("PIN GEREKLİ", ORANGE);
-            setPcStatus("PC Köprüsü ekranındaki 6 haneli PIN'i girin", ORANGE);
+            setPcStatus("PC Bağlantısı ekranındaki 6 haneli PIN'i girin", ORANGE);
             if (userAction) {
                 Toast.makeText(this, "6 haneli PIN girin", Toast.LENGTH_SHORT).show();
             }
@@ -1367,7 +1367,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         readPcInputs();
         pcDiscovering = true;
         setPcState("ARANIYOR", ORANGE);
-        setPcStatus("Yerel ağda PC Köprüsü aranıyor…", MUTED);
+        setPcStatus("Yerel ağda YEK Panel aranıyor…", MUTED);
         if (pcDiscoverButton != null) {
             pcDiscoverButton.setEnabled(false);
         }
@@ -1555,7 +1555,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private void resetPcUi() {
         setPcState("BAĞLI DEĞİL", MUTED);
-        setPcStatus("PC köprüsünü çalıştırıp IP ve PIN girin", MUTED);
+        setPcStatus("Windows YEK Panel'de PC Bağlantısı'nı açıp IP ve PIN girin", MUTED);
         if (pcName != null) {
             pcName.setText("—");
         }
@@ -3040,10 +3040,14 @@ public class MainActivity extends Activity implements SensorEventListener {
         addCard(c, dataCard);
 
         LinearLayout updateCard = card();
-        updateCard.addView(cardHeader("GÜNCELLEME", chip("GITHUB", ACCENT)));
-        TextView updateDesc = text("Android sürümü GitHub Releases üzerinden denetlenir. "
-                + "Yeni sürüm bulunduğunda APK indirilir ve kurulum için Android onayı "
-                + "istenir; sessiz kurulum yapılmaz.", 11, MUTED, false);
+        updateCard.addView(cardHeader("GÜNCELLEME",
+                chip(BuildConfig.PLAY_BUILD ? "PLAY STORE" : "GITHUB", ACCENT)));
+        TextView updateDesc = text(BuildConfig.PLAY_BUILD
+                ? "Bu sürüm Google Play üzerinden güncellenir. Yeni sürümler Play Store "
+                        + "uygulamasında otomatik olarak sunulur."
+                : "Android sürümü GitHub Releases üzerinden denetlenir. "
+                        + "Yeni sürüm bulunduğunda APK indirilir ve kurulum için Android onayı "
+                        + "istenir; sessiz kurulum yapılmaz.", 11, MUTED, false);
         updateDesc.setPadding(0, dp(8), 0, dp(3));
         updateDesc.setLineSpacing(dp(3), 1f);
         updateCard.addView(updateDesc);
@@ -3076,8 +3080,10 @@ public class MainActivity extends Activity implements SensorEventListener {
         LinearLayout updateButtons = new LinearLayout(this);
         updateButtons.setOrientation(LinearLayout.HORIZONTAL);
         updateButtons.setPadding(0, dp(10), 0, 0);
-        updateCheckButton = button("GÜNCELLEME KONTROL ET", true);
-        updateCheckButton.setContentDescription("Güncellemeyi kontrol et");
+        updateCheckButton = button(BuildConfig.PLAY_BUILD
+                ? "PLAY STORE'DA AÇ" : "GÜNCELLEME KONTROL ET", true);
+        updateCheckButton.setContentDescription(BuildConfig.PLAY_BUILD
+                ? "Play Store sayfasını aç" : "Güncellemeyi kontrol et");
         updateCheckButton.setOnClickListener(v -> checkForUpdates(true));
         updateInstallButton = button("KUR", false);
         updateInstallButton.setContentDescription("İndirilen güncellemeyi kur");
@@ -3117,7 +3123,9 @@ public class MainActivity extends Activity implements SensorEventListener {
             prefs.edit().putBoolean(AppPrefs.K_UPDATE_AUTO, checked).apply();
         });
         updateAutoRow.addView(updateAutoSwitch);
-        updateCard.addView(updateAutoRow);
+        if (!BuildConfig.PLAY_BUILD) {
+            updateCard.addView(updateAutoRow);
+        }
 
         addCard(c, updateCard);
 
@@ -3548,7 +3556,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     // ---------------------------------------------------------------- Güncelleme
 
     private void maybeAutoCheckUpdate() {
-        if (!updateAuto) {
+        if (BuildConfig.PLAY_BUILD || !updateAuto) {
             return;
         }
         long last = prefs.getLong(AppPrefs.K_UPDATE_LAST, 0);
@@ -3559,6 +3567,19 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void checkForUpdates(boolean userAction) {
+        if (BuildConfig.PLAY_BUILD) {
+            setUpdateStatus("Güncellemeler Google Play üzerinden yapılır.", GREEN);
+            updateUpdateUi();
+            if (userAction) {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("market://details?id=" + getPackageName())));
+                } catch (Exception ignored) {
+                    openUrl("https://play.google.com/store/apps/details?id=" + getPackageName());
+                }
+            }
+            return;
+        }
         if (updateChecking) {
             return;
         }

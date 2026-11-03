@@ -12,7 +12,7 @@ public static class AppInfo
     public const int FeatureCount = 134;
 
     public static Version Version =>
-        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 3, 0, 0);
+        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 3, 1, 0);
 
     public static string VersionFull => $"{Version.Major}.{Version.Minor}.{Version.Build}";
 

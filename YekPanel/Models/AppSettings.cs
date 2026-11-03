@@ -54,10 +54,9 @@ public sealed class AppSettings
     public int RamAlertPercent { get; set; } = 90;
     public bool SoundAlerts { get; set; } = false;
 
-    public bool WebhookEnabled { get; set; } = false;
-    public string DiscordWebhookUrl { get; set; } = "";
-    public string TelegramBotToken { get; set; } = "";
-    public string TelegramChatId { get; set; } = "";
+    public bool BridgeEnabled { get; set; } = true;
+    public int BridgePort { get; set; } = 8787;
+    public string BridgePin { get; set; } = "";
 
     public bool ClipboardHistoryEnabled { get; set; } = true;
     public string CardOrder { get; set; } = "computer,connection,server";
@@ -168,9 +167,10 @@ public static class SettingsStore
 
         settings.CpuAlertC = Math.Clamp(settings.CpuAlertC, 50, 110);
         settings.RamAlertPercent = Math.Clamp(settings.RamAlertPercent, 50, 100);
-        settings.DiscordWebhookUrl = Trim(settings.DiscordWebhookUrl, 500);
-        settings.TelegramBotToken = Trim(settings.TelegramBotToken, 200);
-        settings.TelegramChatId = Trim(settings.TelegramChatId, 60);
+        settings.BridgePort = Math.Clamp(settings.BridgePort, 1024, 65535);
+        settings.BridgePin = (settings.BridgePin ?? "").Trim();
+        if (settings.BridgePin.Length != 6 || !settings.BridgePin.All(char.IsDigit))
+            settings.BridgePin = "";
         settings.CardOrder = NormalizeCardOrder(settings.CardOrder);
         settings.HiddenCards = NormalizeHiddenCards(settings.HiddenCards);
         NormalizeScripts(settings);

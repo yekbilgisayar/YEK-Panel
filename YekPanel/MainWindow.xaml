@@ -854,29 +854,41 @@
                                     <CheckBox x:Name="MaintenanceCloud" Style="{StaticResource DarkCheck}" Content="Nextcloud" FontSize="11" />
                                 </UniformGrid>
 
-                                <TextBlock Text="WEBHOOK (DISCORD / TELEGRAM)" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />
+                                <TextBlock Text="PC BAĞLANTISI (ANDROID)" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />
                                 <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
                                         CornerRadius="9" Padding="10,8" Margin="0,2,0,6">
                                     <StackPanel>
-                                        <CheckBox x:Name="WebhookEnabledCheck" Style="{StaticResource DarkCheck}"
-                                                  Content="Olaylarda webhook gönder" FontSize="11" Margin="0,0,0,6" />
-                                        <TextBlock Text="DISCORD WEBHOOK ADRESİ" Style="{StaticResource FieldLabel}" />
-                                        <TextBox x:Name="DiscordUrlBox" Style="{StaticResource InputBox}" FontSize="10.5"
-                                                 Margin="0,0,0,6" />
-                                        <TextBlock Text="TELEGRAM BOT TOKEN" Style="{StaticResource FieldLabel}" />
-                                        <TextBox x:Name="TelegramTokenBox" Style="{StaticResource InputBox}" FontSize="10.5"
-                                                 Margin="0,0,0,6" />
-                                        <TextBlock Text="TELEGRAM CHAT ID" Style="{StaticResource FieldLabel}" />
-                                        <TextBox x:Name="TelegramChatIdBox" Style="{StaticResource InputBox}" FontSize="10.5"
-                                                 Margin="0,0,0,6" />
-                                        <Button x:Name="TestWebhookButton" Content="TEST GÖNDER"
-                                                Style="{StaticResource GhostButton}" FontSize="9.5" Padding="9,6"
-                                                HorizontalAlignment="Left" Click="TestWebhook_Click"
-                                                AutomationProperties.Name="Webhook test gönder"
-                                                AutomationProperties.AutomationId="WebhookTest" />
-                                        <TextBlock x:Name="WebhookStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
-                                                   TextWrapping="Wrap" Margin="1,5,0,0" />
-                                        <TextBlock Text="Adres ve token yalnızca bu bilgisayardaki settings.json dosyasında tutulur."
+                                        <CheckBox x:Name="BridgeEnabledCheck" Style="{StaticResource DarkCheck}"
+                                                  Content="Android bağlantısını aç" FontSize="11" Margin="0,0,0,6" />
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="PORT" Style="{StaticResource FieldLabel}" />
+                                                <TextBox x:Name="BridgePortBox" Style="{StaticResource InputBox}"
+                                                         FontSize="10.5" Width="76" HorizontalAlignment="Left"
+                                                         TextAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                <TextBlock Text="6 HANELİ PIN" Style="{StaticResource FieldLabel}" />
+                                                <TextBox x:Name="BridgePinBox" Style="{StaticResource InputBox}"
+                                                         FontSize="10.5" Width="92" TextAlignment="Center"
+                                                         MaxLength="6" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <Button Content="YENİ PIN" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                                    Padding="9,6" Click="BridgeNewPin_Click"
+                                                    AutomationProperties.Name="Yeni PIN üret" />
+                                            <Button Content="BİLGİYİ KOPYALA" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                                    Padding="9,6" Margin="6,0,0,0" Click="BridgeCopy_Click"
+                                                    AutomationProperties.Name="PC bağlantı bilgisini kopyala" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="BridgeStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                                   TextWrapping="Wrap" Margin="1,3,0,0" />
+                                        <TextBlock Text="Windows güvenlik duvarında yalnızca özel ağlara izin verin. Veriler internete gönderilmez."
                                                    FontSize="8.5" Foreground="#4F6C8F" TextWrapping="Wrap" Margin="1,4,0,0" />
                                     </StackPanel>
                                 </Border>
@@ -1436,17 +1448,22 @@
                                 </Border>
                                 <StackPanel x:Name="SchedulerList" Margin="0,2,0,10" />
 
-                                <TextBlock Text="WEBHOOK" Style="{StaticResource CardTitle}" FontSize="10" />
+                                <TextBlock Text="PC BAĞLANTISI" Style="{StaticResource CardTitle}" FontSize="10" />
                                 <Border Background="#0A1E38" BorderBrush="#14365D" BorderThickness="1"
                                         CornerRadius="9" Padding="10,8" Margin="0,6,0,8">
                                     <StackPanel>
-                                        <TextBlock Text="Discord ve Telegram bilgilerini Ayarlar &gt; Webhook bölümüne girin. Sunucu düşüşleri, donanım uyarıları ve görev sonuçları buraya gönderilir."
+                                        <TextBlock x:Name="ToolsBridgeText"
+                                                   Text="Android bağlantısı kapalı."
                                                    FontSize="9" Foreground="#5F7FA6" TextWrapping="Wrap" />
-                                        <Button Content="TEST GÖNDER" Style="{StaticResource GhostButton}" FontSize="9.5"
-                                                Padding="9,6" HorizontalAlignment="Left" Margin="0,7,0,0"
-                                                Click="TestWebhook_Click" AutomationProperties.Name="Webhook test gönder"
-                                                AutomationProperties.AutomationId="ToolsWebhookTest" />
-                                        <TextBlock x:Name="ToolsWebhookStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
+                                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                                            <Button Content="BİLGİYİ KOPYALA" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                                    Padding="9,6" Click="BridgeCopy_Click"
+                                                    AutomationProperties.Name="PC bağlantı bilgisini kopyala" />
+                                            <Button Content="AYARLAR" Style="{StaticResource GhostButton}" FontSize="9.5"
+                                                    Padding="9,6" Margin="6,0,0,0" Click="OpenSettings_Click"
+                                                    AutomationProperties.Name="PC bağlantı ayarlarını aç" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="ToolsBridgeStatusText" Text="" FontSize="9" Foreground="#4F6C8F"
                                                    TextWrapping="Wrap" Margin="1,5,0,0" />
                                     </StackPanel>
                                 </Border>

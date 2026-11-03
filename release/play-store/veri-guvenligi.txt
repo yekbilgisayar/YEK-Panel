@@ -1,0 +1,69 @@
+Google Play "Veri güvenliği" formu — önerilen yanıtlar
+=====================================================
+
+Uygulama: YEK Panel (com.yekbilgisayar.yekpanel) 1.2.1 (versionCode 4)
+
+1) Veri toplama ve paylaşım
+---------------------------
+- Uygulamanız gerekli kullanıcı verisi topluyor veya paylaşıyor mu?  → Hayır
+- Veri türleri: hiçbiri seçilmez (konum, kişiler, mesajlar, fotoğraf, cihaz
+  kimliği, finans, sağlık vb. yok).
+- Geliştiriciye ait sunucu, hesap sistemi, reklam veya analiz SDK'sı yoktur.
+
+2) Veri işleme
+--------------
+- Tüm veriler cihazda kalır (notlar, hatırlatıcılar, ayarlar, ölçüm geçmişi,
+  PC bağlantı bilgileri).
+- Aktarımda şifreleme sorusu: uygulama geliştiriciye veri göndermediği için
+  "geçerli değil" olarak değerlendirilir. PC bağlantısı yalnızca yerel ağdadır.
+- Kullanıcı verilerini silme talebi: hesap olmadığı için uygulama içi silme
+  gerekmez; kullanıcı "Verileri temizle" veya kaldırma ile tüm verileri siler.
+
+3) Güvenlik uygulamaları
+------------------------
+- Veriler aktarım sırasında şifreleniyor mu? → Geliştiriciye aktarım yok.
+  (Yerel ağdaki PC bağlantısı kullanıcının kendi ağında çalışır; ayrı bir
+  bulut hizmeti kullanılmaz.)
+- Kullanıcılar verilerinin silinmesini talep edebilir mi? → Evet (cihazdan
+  temizleme/kaldırma ile).
+- Bağımsız güvenlik incelemesi: yok.
+
+4) Uygulama erişimi
+-------------------
+- Tüm özellikler hesap girişi olmadan kullanılabilir.
+- PC bağlantısı isteğe bağlıdır ve Windows uygulamasının gösterdiği 6 haneli
+  PIN ile yerel ağda eşleşir; Play incelemesi için hesap/şifre gerekmez.
+- İnceleme notu: "PC sekmesi, aynı ağdaki Windows uygulaması olmadan da
+  açılır; bağlantı kurulmazsa 'Bağlantı bekleniyor' durumu gösterilir."
+
+5) Reklamlar ve satın almalar
+-----------------------------
+- Reklam içeriyor mu? → Hayır
+- Uygulama içi satın alma var mı? → Hayır
+
+6) İçerik derecelendirmesi (IARC)
+---------------------------------
+- Kategori: Yardımcı program / sistem aracı
+- Şiddet, cinsellik, küfür, kumar, uyuşturucu, korku: yok
+- Kullanıcılar arası etkileşim / kullanıcı içeriği paylaşımı: yok
+  (notlar ve sunucu adresleri yalnızca cihazda kalır)
+- Konum paylaşımı: yok
+- Dijital satın alma: yok
+- Beklenen derecelendirme: 3+ / Herkes (bölgeye göre değişebilir)
+
+7) Hedef kitle
+--------------
+- 13 yaş ve üzeri (sistem aracı; çocuklara yönelik değil)
+- "Çocuklara yönelik" olarak işaretlenmez.
+
+8) Gerekli teknik bilgiler
+--------------------------
+- targetSdkVersion: 36 (Android 16)
+- minSdkVersion: 26 (Android 8.0)
+- Yükleme dosyası: YEK-Panel-1.2.1-play.aab (imzalı App Bundle)
+- Play App Signing: etkinleştirilmeli; yükleme anahtarı ayrı tutulur.
+- İzinler (Play sürümü): INTERNET, ACCESS_NETWORK_STATE, POST_NOTIFICATIONS,
+  RECEIVE_BOOT_COMPLETED, VIBRATE
+- REQUEST_INSTALL_PACKAGES izni Play flavor'ında kaldırılmıştır.
+- Güncellemeler Play sürümünde Google Play üzerinden yapılır; uygulama içi
+  APK indirme akışı yalnızca GitHub (sideload) sürümünde bulunur.

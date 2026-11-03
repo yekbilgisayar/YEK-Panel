@@ -1,5 +1,10 @@
 # YEK Panel PC Köprüsü
 
+> **Bu araç artık gerekli değildir.** PC bağlantısı YEK Panel 2.3.1 masaüstü
+> uygulamasına gömülmüştür. Windows uygulamasında **Ayarlar > PC BAĞLANTISI**
+> bölümünü kullanın; Android 1.2.1 aynı bağlantıyı doğrudan kurar. Bu klasör
+> yalnızca eski sürümlerle geriye dönük uyumluluk için tutulmaktadır.
+
 Windows bilgisayarın sistem verilerini **yalnızca yerel ağdaki** YEK Panel Android
 uygulamasına açar. Masaüstü YEK Panel uygulamasının ayarlarına, dosyalarına veya
 otomatik başlatmasına dokunmaz; ayrı ve bağımsız bir araçtır.

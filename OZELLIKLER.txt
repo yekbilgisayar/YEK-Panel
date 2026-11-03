@@ -143,13 +143,13 @@ v2.2 YENİ ÖZELLİKLER
 115) Arayüz ve arka plan hatalarında uygulamanın çalışmaya devam etmesi — [YENİ v2.2]
 116) Sürüm numarasının tek kaynaktan gelmesi; başlık ve Hakkında etiketlerinin dinamik olması — [YENİ v2.2]
 
-v2.3 YENİ ÖZELLİKLER
+v2.3 / v2.3.1 YENİ ÖZELLİKLER
 117) En yoğun 5 işlemi tek tıkla kapatma; sistem süreçleri korunur — [YENİ v2.3]
 118) Ayarlanabilir CPU sıcaklık eşiği uyarısı — [YENİ v2.3]
 119) Ayarlanabilir RAM kullanım eşiği uyarısı — [YENİ v2.3]
 120) Uyarılarda isteğe bağlı sesli bildirim — [YENİ v2.3]
-121) Discord webhook bildirimi ve test düğmesi — [YENİ v2.3]
-122) Telegram bot webhook bildirimi ve test düğmesi — [YENİ v2.3]
+121) Masaüstü uygulamasına gömülü PC bağlantısı; ayrı yardımcı gerekmez — [YENİ v2.3.1]
+122) Android için 6 haneli PIN, port seçimi, UDP keşif ve bilgi kopyalama — [YENİ v2.3.1]
 123) GPU canlı kullanım yüzdesi — [YENİ v2.3]
 124) GPU VRAM kullanılan/toplam bellek göstergesi — [YENİ v2.3]
 125) Betik merkezi: PowerShell, Python, BAT ve PS1 çalıştırma — [YENİ v2.3]
@@ -164,8 +164,9 @@ v2.3 YENİ ÖZELLİKLER
 134) Ana ekran kartlarını sıralama ve gizleme — [YENİ v2.3]
 
 ------------------------------------------------------------
-Not: v2.3'ün ana yenilikleri işlem kapatma, GPU/VRAM izleme,
-eşik uyarıları, betik ve zamanlanmış görev merkezi, webhook
-bildirimleri, DNS değiştirici, pano geçmişi, notlar ve ses
-cihazı seçimidir. Veriler %AppData%\YekPanel klasöründe
+Not: v2.3.1'in ana yeniliği, Android telefonla PC bağlantısının
+masaüstü uygulamasına gömülmesidir; Discord/Telegram webhook
+alt yapısı kaldırıldı. Diğer yenilikler işlem kapatma, GPU/VRAM
+izleme, eşik uyarıları, betik ve zamanlanmış görev merkezi, DNS
+değiştirici, pano geçmişi, notlar ve ses cihazı seçimidir. Veriler %AppData%\YekPanel klasöründe
 JSON/CSV olarak tutulur.

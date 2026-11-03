@@ -2,16 +2,23 @@ plugins {
     id "com.android.application"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesPath = System.getenv("YEK_KEYSTORE_PROPERTIES")
+def keystorePropertiesFile = keystorePropertiesPath ? file(keystorePropertiesPath) : null
+if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace "com.yekbilgisayar.yekpanel"
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.yekbilgisayar.yekpanel"
         minSdk 26
-        targetSdk 35
-        versionCode 3
-        versionName "1.2.0"
+        targetSdk 36
+        versionCode 4
+        versionName "1.2.1"
         resourceConfigurations += ["tr", "en"]
     }
 
@@ -19,11 +26,39 @@ android {
         buildConfig true
     }
 
+    signingConfigs {
+        upload {
+            if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
+    flavorDimensions "distribution"
+    productFlavors {
+        sideload {
+            dimension "distribution"
+            buildConfigField "boolean", "PLAY_BUILD", "false"
+        }
+        play {
+            dimension "distribution"
+            buildConfigField "boolean", "PLAY_BUILD", "true"
+            if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.upload
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             shrinkResources false
-            // Play Store yayını için kendi yükleme anahtarınızla imzalayın.
+            // GitHub sideload APK'sı mevcut 1.2.x kurulumlarıyla aynı test anahtarını
+            // kullanır; Play AAB'si play flavor'ında yükleme anahtarıyla imzalanır.
+            signingConfig signingConfigs.debug
         }
     }
 

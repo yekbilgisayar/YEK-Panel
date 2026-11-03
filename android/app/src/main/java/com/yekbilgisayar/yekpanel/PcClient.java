@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Windows tarafındaki YEK Panel PC Köprüsü ile yerel ağ üzerinden konuşur.
+ * Windows tarafındaki YEK Panel PC bağlantısı ile yerel ağ üzerinden konuşur.
  * İstekler yalnızca kullanıcının verdiği adrese gider; internete veri gönderilmez.
  */
 public final class PcClient {
@@ -142,7 +142,7 @@ public final class PcClient {
             String body = read(connection, 512 * 1024);
             JSONObject json = new JSONObject(body);
             if (!json.optBoolean("ok", false)) {
-                result.error = "PC köprüsü isteği reddetti";
+                result.error = "PC bağlantısı isteği reddetti";
                 return result;
             }
             result.status = parseStatus(json);
