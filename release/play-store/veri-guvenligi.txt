@@ -58,12 +58,12 @@ Uygulama: YEK Panel (com.yekbilgisayar.yekpanel) 1.2.1 (versionCode 4)
 
 8) Gerekli teknik bilgiler
 --------------------------
-- targetSdkVersion: 36 (Android 16)
+- targetSdkVersion: 37 (Android 17)
 - minSdkVersion: 26 (Android 8.0)
 - Yükleme dosyası: YEK-Panel-1.2.1-play.aab (imzalı App Bundle)
 - Play App Signing: etkinleştirilmeli; yükleme anahtarı ayrı tutulur.
-- İzinler (Play sürümü): INTERNET, ACCESS_NETWORK_STATE, POST_NOTIFICATIONS,
-  RECEIVE_BOOT_COMPLETED, VIBRATE
+- İzinler (Play sürümü): INTERNET, ACCESS_NETWORK_STATE, ACCESS_LOCAL_NETWORK,
+  POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, VIBRATE
 - REQUEST_INSTALL_PACKAGES izni Play flavor'ında kaldırılmıştır.
 - Güncellemeler Play sürümünde Google Play üzerinden yapılır; uygulama içi
   APK indirme akışı yalnızca GitHub (sideload) sürümünde bulunur.

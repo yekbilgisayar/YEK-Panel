@@ -14,7 +14,13 @@ yok; YEK Panel > Ayarlar > PC BAĞLANTISI bölümünü açıp telefondan bağlan
 - **Keşif:** "PC'Yİ BUL" aynı ağdaki bilgisayarı UDP 8788 ile bulur; otomatik
   bağlanma isteğe bağlıdır.
 - **Güvenlik:** PIN zorunlu; 5 hatalı denemede 1 dakika kilit. Yalnızca yerel ağ.
-- **Google Play hedefi:** `compileSdk`/`targetSdk` 36 (Android 16).
+- **Android 17 hedefi:** `compileSdk`/`targetSdk` 37 (Android 17); AGP 9.3.3,
+  Gradle 9.5.0 ve build-tools 37.0.0.
+- **Yerel ağ izni:** Android 17, aynı ağdaki PC'ye erişim için `ACCESS_LOCAL_NETWORK`
+  iznini zorunlu tutar; uygulama bu izni ilk bağlantıda açıklar ve ister. İzin
+  verilmezse yalnızca PC bağlantısı çalışmaz, diğer özellikler etkilenmez.
+- **Öngörülü geri:** Android 16+ için yerel `OnBackInvokedCallback` desteği;
+  alt sekmelerden geri hareketi PANEL'e döner.
 - **İki dağıtım kanalı:**
   - GitHub APK'sı (bu dosya): GitHub Releases üzerinden otomatik güncelleme,
     mevcut 1.2.x kurulumlarıyla aynı imza.
@@ -44,10 +50,12 @@ yok; YEK Panel > Ayarlar > PC BAĞLANTISI bölümünü açıp telefondan bağlan
 
 ## Doğrulama
 
-- 1.2.1, Android 15 emülatörüne 1.2.0'ın üzerine kuruldu; sürüm, sekmeler ve yeni
-  PC ekranı doğrulandı.
-- Telefon → gömülü köprü bağlantısı `10.0.2.2:8787` üzerinden kuruldu; bilgisayar
-  adı, CPU, RAM, disk, ağ ve pil değerleri canlı görüntülendi.
+- 1.2.1, Android 17 (API 37) emülatörüne kuruldu; sürüm, dört sekme ve PC ekranı
+  doğrulandı.
+- Android 17'de `ACCESS_LOCAL_NETWORK` izni ilk bağlantıda istendi; izin
+  verildikten sonra `10.0.2.2:8787` bağlantısı otomatik kuruldu ve bilgisayar adı,
+  CPU (%24), RAM (22,1/31,6 GB, %70), ağ trafiği ve 1201 Mbps bağlantı hızı canlı
+  görüntülendi.
 - `/api/ping`, PIN'li `/api/status` ve UDP keşif yanıtı ayrıca sınandı; hatalı PIN
   "PIN hatalı", 5 hatalı denemede 1 dakika kilit davranışı korunuyor.
 - Play flavor manifestinde `REQUEST_INSTALL_PACKAGES` yok; AAB imzası doğrulandı.
@@ -64,7 +72,7 @@ yok; YEK Panel > Ayarlar > PC BAĞLANTISI bölümünü açıp telefondan bağlan
 ## SHA-256
 
 ```text
-22eda6784b2fe8bd1aeead2af28033570abe009137eb20a115b3df4a2f27d2cd  YEK-Panel-Android-1.2.1.apk
+67c0a7f6fefd1b6a8edf9354f4b76cdb84bd3bfccef111469990c5a7f3c2672e  YEK-Panel-Android-1.2.1.apk
 ```
 
 ## Bağlantılar

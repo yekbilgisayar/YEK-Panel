@@ -10,65 +10,68 @@ if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.yekbilgisayar.yekpanel"
-    compileSdk 36
+    namespace = "com.yekbilgisayar.yekpanel"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId "com.yekbilgisayar.yekpanel"
-        minSdk 26
-        targetSdk 36
-        versionCode 4
-        versionName "1.2.1"
-        resourceConfigurations += ["tr", "en"]
+        applicationId = "com.yekbilgisayar.yekpanel"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 4
+        versionName = "1.2.1"
     }
 
     buildFeatures {
-        buildConfig true
+        buildConfig = true
+    }
+
+    androidResources {
+        localeFilters += ["tr", "en"]
     }
 
     signingConfigs {
         upload {
             if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
-                storeFile file(keystoreProperties["storeFile"])
-                storePassword keystoreProperties["storePassword"]
-                keyAlias keystoreProperties["keyAlias"]
-                keyPassword keystoreProperties["keyPassword"]
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
             }
         }
     }
 
-    flavorDimensions "distribution"
+    flavorDimensions = ["distribution"]
     productFlavors {
         sideload {
-            dimension "distribution"
+            dimension = "distribution"
             buildConfigField "boolean", "PLAY_BUILD", "false"
         }
         play {
-            dimension "distribution"
+            dimension = "distribution"
             buildConfigField "boolean", "PLAY_BUILD", "true"
             if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
-                signingConfig signingConfigs.upload
+                signingConfig = signingConfigs.upload
             }
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled = false
+            shrinkResources = false
             // GitHub sideload APK'sı mevcut 1.2.x kurulumlarıyla aynı test anahtarını
             // kullanır; Play AAB'si play flavor'ında yükleme anahtarıyla imzalanır.
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     lint {
-        abortOnError false
+        abortOnError = false
         // Arayüz metinleri bilinçli olarak yalnızca Türkçe tutuluyor.
         disable "SetTextI18n"
     }

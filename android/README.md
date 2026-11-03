@@ -8,7 +8,7 @@ yerel ağdaki Windows PC'ye bağlanır ve GitHub üzerinden kendini güncelleyeb
 - Paket: `com.yekbilgisayar.yekpanel`
 - Sürüm: `1.2.1` (versionCode 4)
 - Min. Android: 8.0 (API 26)
-- Hedef: Android 16 (API 36)
+- Hedef: Android 17 (API 37)
 - Dil: Java 17, harici UI kütüphanesi yok (framework View'ları)
 
 ## Özellikler
@@ -74,7 +74,9 @@ yerel ağdaki Windows PC'ye bağlanır ve GitHub üzerinden kendini güncelleyeb
 
 ## Doğrulama
 
-Android 16 (API 36) hedefiyle derlendi; Android 15 (API 35) x86_64 emülatöründe çalıştırıldı:
+Android 17 (API 37) hedefiyle derlendi. Açılış, sekmeler ve PC bağlantısı Android 17
+(API 37) x86_64 emülatöründe; diğer özellikler Android 15 (API 35) emülatöründe
+doğrulandı:
 
 - APK kuruldu ve uygulama hatasız açıldı; dört sekme (PANEL, PC, ARAÇLAR, AYARLAR), kart kaydırma ve alt gezinme kontrol edildi.
 - Pil detayları (5.00 V, 900 mA · şarj, 10 mAh, Li-ion, AC adaptör), ağ geçidi/DNS ve sinyal/bağlantı hızı rozetleri doğru göründü.
@@ -87,11 +89,14 @@ Android 16 (API 36) hedefiyle derlendi; Android 15 (API 35) x86_64 emülatörün
 - Yedek `Downloads/yek-panel-yedek.json` olarak dışa aktarıldı; ayarlar değiştirilip geri yüklendi ve "1 not · 1 hatırlatıcı · 1 sunucu" geri geldi.
 - Tanılama panoya kopyalandı ve Android paylaşım sayfası açıldı.
 - "Araçlar" ve "Ayarlar" kısayol niyetleri hem soğuk hem sıcak başlatmada doğru sekmeyi açtı; uygulama yeniden başlatıldığında not, hatırlatıcı ve sunucu korundu.
-- Gömülü PC bağlantısı Windows 11'de YEK Panel 2.3.1 içinde doğrulandı; `/api/ping`, PIN'li `/api/status` ve UDP keşif yanıtı alındı. Telefondan bağlantı kuruldu; bilgisayar adı, Windows sürümü, CPU (%21–41), RAM (20/31,6 GB, %63), disk (C: 541/952 GB), ağ hızı, 144 Mbps bağlantı, pil (%82) ve ilk 5 işlem görüntülendi.
+- Gömülü PC bağlantısı Windows 11'de YEK Panel 2.3.1 içinde doğrulandı; `/api/ping` ve PIN'li `/api/status` yanıtları alındı. Android 17 emülatöründe `ACCESS_LOCAL_NETWORK` izni ilk bağlantıda istendi ve verildi; ardından bilgisayar adı, Windows sürümü, CPU (%24), RAM (22,1/31,6 GB, %70), ağ trafiği ve 1201 Mbps bağlantı hızı canlı görüntülendi. İzin verilmezse yalnızca PC sekmesi uyarı gösterir; diğer özellikler çalışmaya devam eder.
+- Android 16+ öngörülü geri hareketi: AYARLAR sekmesinden geri tuşu PANEL'e döndü;
+  uygulama çökmedi ve PC bağlantısı korundu.
 - Hatalı PIN "PIN hatalı" olarak gösterildi; 5 hatalı denemeden sonra sunucu HTTP 429 döndürdü ve uygulama "1 dakika bekleyin" mesajını verdi. Doğru PIN ile yeniden bağlanıldı.
 - PC IP listesinde yalnızca kullanılabilir yerel adres kaldı; sanal, VPN, Tailscale, VMware ve APIPA adresleri gizlendi.
 - Sahte GitHub akışıyla güncelleme akışı uçtan uca denendi: 1.3.0 sürümü algılandı, sürüm notları ve APK boyutu gösterildi, APK indirildi, bilinmeyen kaynak izni verildi, Android kurulum onayı çıktı ve kurulum tamamlandı. Test akışı ve test APK'sı temizlendi.
-- `assembleDebug` ve `lintDebug` hatasız; lint "No issues found."
+- `assembleSideloadRelease`, `bundlePlayRelease` ve lint hatasız. Lint yalnızca
+  Gradle 9.8.2 sürüm önerisi uyarısı veriyor; hata yok.
 
 Bilinen sınırlama: Android 8 ve üzerinde `/proc/stat` uygulamalara kapalıdır; CPU yükü
 okunamadığında kart "yük kısıtlı" gösterir, uygulama çökmez. Bazı cihazlar ortam
@@ -99,7 +104,7 @@ sıcaklığı/nem gibi sensörler için geçersiz değer döndürür; bu değerl
 
 ## Derleme
 
-Gereksinimler: JDK 17+ ve Android SDK 36 (platform + build-tools).
+Gereksinimler: JDK 17+ ve Android SDK 37 (platform + build-tools 37).
 
 ```bash
 cd android
@@ -113,9 +118,10 @@ cd android
 sdk.dir=C:/Users/KULLANICI/AppData/Local/Android/Sdk
 ```
 
-Bu depodaki `gradlew` sarmalayıcısı Gradle 8.11.1 kullanır; Android Gradle Plugin
-8.10.1'dir. Play Store, 31 Ağustos 2026'dan itibaren yeni uygulama ve güncellemelerde
-Android 16 (API 36) hedefini zorunlu tutar.
+Bu depodaki `gradlew` sarmalayıcısı Gradle 9.5.0 kullanır; Android Gradle Plugin
+9.3.3'tür. Play Store, 31 Ağustos 2026'dan itibaren yeni uygulama ve güncellemelerde
+Android 16 (API 36) hedefini zorunlu tutar; API 37 zorunluluğu 31 Ağustos 2027'de
+başlayacaktır. Bu paket API 37 ile derlenmiştir.
 
 ## Play Store
 

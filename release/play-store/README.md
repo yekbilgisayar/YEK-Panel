@@ -56,16 +56,19 @@ geliştirici e-posta adresini ekleyin (dosyada bilerek boş bırakılmıştır).
 ## 4. Teknik doğrulamalar
 
 - `versionCode 4`, `versionName 1.2.1`
-- `compileSdk 36`, `targetSdk 36` (Android 16), `minSdk 26`
+- `compileSdk 37`, `targetSdk 37` (Android 17), `minSdk 26`
 - Play flavor'ında `REQUEST_INSTALL_PACKAGES` izni yok
+- Yerel ağ izni (`ACCESS_LOCAL_NETWORK`) Android 17'de ilk PC bağlantısında istenir
+- AGP 9.3.3 / Gradle 9.5.0 / build-tools 37.0.0
 - Play flavor'ında güncelleme kontrolü Google Play'e yönlendirilir
 - AAB `jarsigner -verify` ile doğrulandı
 - Ekran görüntüleri 864×1920 (9:16), simge 512×512, grafik 1024×500
 
 ## 5. Notlar
 
-- Play, 31 Ağustos 2026 sonrası yeni uygulama ve güncellemelerde API 36 hedefini
-  zorunlu tutar; bu paket API 36 ile derlenmiştir.
+- Play, 31 Ağustos 2026 sonrası yeni uygulama ve güncellemelerde API 36 hedefini,
+  31 Ağustos 2027 sonrası API 37 hedefini zorunlu tutar; bu paket API 37 ile
+  derlenmiştir.
 - AAB içinde kişisel IP, makine adı, PIN veya test hesabı bulunmaz.
 - Yükleme anahtarı ve parolası depoya eklenmez; `YEK_KEYSTORE_PROPERTIES`
   ortam değişkeniyle derleme sırasında okunur.

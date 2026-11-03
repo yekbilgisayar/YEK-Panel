@@ -1,6 +1,7 @@
 package com.yekbilgisayar.yekpanel;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
@@ -42,6 +43,7 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.window.OnBackInvokedDispatcher;
 
 import com.yekbilgisayar.yekpanel.ui.BatteryRingView;
 import com.yekbilgisayar.yekpanel.ui.MeterView;
@@ -77,6 +79,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
 
     private static final int REQ_NOTIFICATIONS = 31;
+    private static final int REQ_LOCAL_NETWORK = 32;
     private static final int REQ_EXPORT_TXT = 41;
     private static final int REQ_EXPORT_MD = 42;
     private static final int REQ_EXPORT_BACKUP = 51;
@@ -259,6 +262,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private boolean pcConnecting = false;
     private boolean pcFetching = false;
     private boolean pcDiscovering = false;
+    private int pcPendingAction = 0;
     private long pcNextRetryAt = 0;
     private String pcHost = "";
     private int pcPort = AppPrefs.DEFAULT_PC_PORT;
@@ -339,6 +343,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         NotificationHelper.ensureChannels(this);
 
         setContentView(buildRoot());
+        registerPredictiveBack();
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -412,6 +417,22 @@ public class MainActivity extends Activity implements SensorEventListener {
         stopSensors();
     }
 
+    private void registerPredictiveBack() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
+        }
+    }
+
+    private void handleBack() {
+        if (currentPage != 0) {
+            showPage(0);
+        } else {
+            finish();
+        }
+    }
+
+    @SuppressLint("GestureBackNavigation")
     @Override
     public void onBackPressed() {
         if (currentPage != 0) {
@@ -1240,6 +1261,27 @@ public class MainActivity extends Activity implements SensorEventListener {
                 .apply();
     }
 
+    private boolean hasLocalNetworkPermission() {
+        if (Build.VERSION.SDK_INT < 37) {
+            return true;
+        }
+        return checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @SuppressLint("InlinedApi")
+    private boolean ensureLocalNetworkPermission(int action) {
+        if (hasLocalNetworkPermission()) {
+            return true;
+        }
+        pcPendingAction = action;
+        setPcState("İZİN GEREKLİ", ORANGE);
+        setPcStatus("Yerel ağ izni gerekli: aynı ağdaki PC'ye bağlanmak için izin verin", ORANGE);
+        requestPermissions(new String[]{Manifest.permission.ACCESS_LOCAL_NETWORK},
+                REQ_LOCAL_NETWORK);
+        return false;
+    }
+
     private void connectPc(boolean userAction) {
         if (pcConnecting || pcFetching) {
             return;
@@ -1260,6 +1302,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             if (userAction) {
                 Toast.makeText(this, "6 haneli PIN girin", Toast.LENGTH_SHORT).show();
             }
+            return;
+        }
+        if (userAction && !ensureLocalNetworkPermission(1)) {
+            return;
+        }
+        if (!hasLocalNetworkPermission()) {
+            setPcState("BAĞLI DEĞİL", ORANGE);
+            setPcStatus("Yerel ağ izni gerekli", ORANGE);
             return;
         }
         final String host = pcHost;
@@ -1365,6 +1415,9 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
         readPcInputs();
+        if (!ensureLocalNetworkPermission(2)) {
+            return;
+        }
         pcDiscovering = true;
         setPcState("ARANIYOR", ORANGE);
         setPcStatus("Yerel ağda YEK Panel aranıyor…", MUTED);
@@ -3512,6 +3565,27 @@ public class MainActivity extends Activity implements SensorEventListener {
     public void onRequestPermissionsResult(int requestCode, String[] permissions,
                                            int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCAL_NETWORK) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            int action = pcPendingAction;
+            pcPendingAction = 0;
+            if (granted) {
+                Toast.makeText(this, "Yerel ağ izni verildi", Toast.LENGTH_SHORT).show();
+                if (action == 1) {
+                    connectPc(true);
+                } else if (action == 2) {
+                    discoverPc();
+                }
+            } else {
+                setPcState("İZİN GEREKLİ", ORANGE);
+                setPcStatus("Yerel ağ izni verilmedi. PC bağlantısı için Ayarlar > "
+                        + "Uygulamalar > YEK Panel > İzinler bölümünden yerel ağ iznini açın.",
+                        ORANGE);
+                Toast.makeText(this, "Yerel ağ izni verilmedi", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (requestCode == REQ_NOTIFICATIONS) {
             boolean granted = grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED;

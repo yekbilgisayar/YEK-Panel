@@ -19,7 +19,13 @@ Windows 10/11 için sistem ve sunucu izleme paneli; Android için mobil sistem p
 
 ## Android 1.2.1
 
-- **Play Store hedefi:** `compileSdk`/`targetSdk` 36 (Android 16), `minSdk` 26.
+- **Android 17 hedefi:** `compileSdk`/`targetSdk` 37 (Android 17), `minSdk` 26;
+  AGP 9.3.3, Gradle 9.5.0 ve build-tools 37.0.0.
+- **Yerel ağ izni:** Android 17'de aynı ağdaki PC'ye bağlanmak için
+  `ACCESS_LOCAL_NETWORK` izni ilk bağlantıda istenir; izin verilmezse yalnızca PC
+  bağlantısı devre dışı kalır.
+- **Öngörülü geri:** Android 16+ için `OnBackInvokedCallback` desteği eklendi;
+  geri hareketi alt sekmelerden PANEL'e döner, PANEL'de uygulamadan çıkar.
 - **PC bağlantısı güncellendi:** Windows YEK Panel > Ayarlar > PC BAĞLANTISI
   akışına yönlendiren yeni açıklama; aynı gömülü köprüye bağlanır.
 - **Play ve GitHub sürümleri ayrıldı:**
@@ -38,10 +44,13 @@ ve imzalı `YEK-Panel-1.2.1-play.aab` bulunur. Ayrıntılı adımlar aynı klas�
 
 ## Doğrulama
 
-- Android 1.2.1, Android 15 emülatörüne 1.2.0'ın üzerine kuruldu; sürüm ve yeni
+- Android 1.2.1, Android 17 (API 37) emülatörüne kuruldu; sürüm, dört sekme ve
   PC ekranı doğrulandı.
-- Telefon → gömülü köprü bağlantısı doğrudan `10.0.2.2:8787` üzerinden kuruldu;
-  bilgisayar adı, CPU, RAM, disk, ağ ve pil değerleri canlı görüntülendi.
+- `ACCESS_LOCAL_NETWORK` izni ilk bağlantıda istendi; izin verildikten sonra
+  `10.0.2.2:8787` bağlantısı otomatik kuruldu; bilgisayar adı, CPU (%24), RAM
+  (22,1/31,6 GB), ağ trafiği ve 1201 Mbps bağlantı hızı canlı görüntülendi.
+- APK/AAB `compileSdk`/`targetSdk` 37, AGP 9.3.3, Gradle 9.5.0 ve build-tools
+  37.0.0 ile derlendi.
 - Köprü `/api/ping`, PIN'li `/api/status` ve UDP keşif ile ayrıca sınandı.
 - WPF 2.3.1 yayın çıktısı 0 uyarı/0 hata ile derlendi; kurulum ve taşınabilir
   dosyaların sürüm bilgisi 2.3.1.0 olarak doğrulandı.

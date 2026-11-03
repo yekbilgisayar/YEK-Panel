@@ -31,7 +31,7 @@ YEK Panel'in Android sürümü de aynı depoda: pil detayları, bellek, depolama
 
 Yeni **Android 1.2.1** ile telefon, aynı yerel ağdaki Windows bilgisayara bağlanır: CPU/RAM/disk, ağ hızı, pil/sıcaklık ve en yoğun 5 işlem canlı görünür. Bağlantı **YEK Panel 2.3.1 masaüstü uygulamasına gömülüdür**; ayrı bir yardımcı çalıştırmanız gerekmez. Windows'ta **Ayarlar > PC BAĞLANTISI** bölümünü açın, ekrandaki IP ve 6 haneli PIN'i telefona girin. İsteğe bağlı UDP keşif ("PC'Yİ BUL") aynı ağdaki bilgisayarı bulur. Android uygulaması ayrıca GitHub Releases üzerinden güncelleme denetler, APK'yı indirir ve kurulum için Android onayı ister.
 
-APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.2.1.apk`). Android 16 (API 36) hedefli imzalı AAB, mağaza metni, gizlilik politikası, ekran görüntüleri ve yükleme adımları `release/play-store/` altında hazırdır; mağaza sürümünde güncellemeler Play üzerinden yapılır. Kaynak kod `android/` klasöründedir; eski `pc-bridge/` aracı yalnızca geriye dönük uyumluluk için depoda tutulur ve yeni sürümde gerekmez.
+APK **Releases** bölümünden indirilebilir (`YEK-Panel-Android-1.2.1.apk`). Android 17 (API 37) hedefli imzalı AAB, mağaza metni, gizlilik politikası, ekran görüntüleri ve yükleme adımları `release/play-store/` altında hazırdır; mağaza sürümünde güncellemeler Play üzerinden yapılır. Kaynak kod `android/` klasöründedir; eski `pc-bridge/` aracı yalnızca geriye dönük uyumluluk için depoda tutulur ve yeni sürümde gerekmez.
 
 ### Google Play paketi
 
