@@ -20,6 +20,9 @@ history.json
 notifications.json
 rapor-*.csv
 
+# Play test kullanıcısı listesi (kişisel e-posta içerir)
+release/play-store/test-kullanicilari*.csv
+
 # Geçici dosyalar
 *.log
 *.tmp

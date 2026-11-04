@@ -45,12 +45,19 @@ android {
         sideload {
             dimension = "distribution"
             buildConfigField "boolean", "PLAY_BUILD", "false"
+            // GitHub sideload APK'sı mevcut 1.2.x kurulumlarıyla aynı test anahtarını
+            // kullanmaya devam eder.
+            signingConfig = signingConfigs.debug
         }
         play {
             dimension = "distribution"
             buildConfigField "boolean", "PLAY_BUILD", "true"
+            // Play AAB'si yükleme anahtarıyla imzalanır. Build type signingConfig
+            // flavor ayarını ezip debug anahtarına düşürdüğü için imza burada verilir.
             if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.upload
+            } else {
+                signingConfig = signingConfigs.debug
             }
         }
     }
@@ -59,9 +66,6 @@ android {
         release {
             minifyEnabled = false
             shrinkResources = false
-            // GitHub sideload APK'sı mevcut 1.2.x kurulumlarıyla aynı test anahtarını
-            // kullanır; Play AAB'si play flavor'ında yükleme anahtarıyla imzalanır.
-            signingConfig = signingConfigs.debug
         }
     }
 
