@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YEK Panel — Gizlilik Politikası</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0B1220; color:#E6EDF7;
+         font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif; line-height:1.65; }
+  main { max-width:820px; margin:0 auto; padding:48px 22px 72px; }
+  h1 { font-size:30px; margin:0 0 4px; letter-spacing:.4px; }
+  h2 { font-size:19px; margin:34px 0 10px; color:#22D3EE; }
+  p, li { color:#C9D6E8; font-size:15.5px; }
+  .muted { color:#8EA1BD; font-size:13.5px; }
+  .badge { display:inline-block; padding:4px 10px; border:1px solid #1E2A44;
+           border-radius:999px; color:#22D3EE; font-size:12.5px; margin-bottom:18px; }
+  ul { padding-left:22px; }
+  code { background:#121C2E; border:1px solid #1E2A44; border-radius:6px;
+         padding:1px 6px; color:#E6EDF7; }
+  a { color:#22D3EE; }
+  hr { border:0; border-top:1px solid #1E2A44; margin:38px 0; }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">YEK PANEL · ANDROID 1.2.1</span>
+  <h1>Gizlilik Politikası</h1>
+  <p class="muted">Son güncelleme: 3 Kasım 2026 · YEK BİLGİSAYAR</p>
+
+  <p>Bu politika, <strong>YEK Panel</strong> Android uygulamasının (paket adı
+  <code>com.yekbilgisayar.yekpanel</code>) hangi verileri işlediğini açıklar.
+  Uygulama hesap oluşturmanızı istemez; reklam, analiz veya izleme yazılımı içermez.</p>
+
+  <h2>1. Geliştiricinin topladığı veriler</h2>
+  <p>YEK BİLGİSAYAR, uygulama üzerinden <strong>hiçbir kişisel veri toplamaz,
+  sunucularına göndermez, satmaz veya üçüncü taraflarla paylaşmaz</strong>.
+  Uygulamanın geliştiriciye ait bir veri sunucusu yoktur.</p>
+
+  <h2>2. Cihazda saklanan veriler</h2>
+  <p>Aşağıdaki bilgiler yalnızca telefonunuzun yerel depolamasında tutulur:</p>
+  <ul>
+    <li>Ölçüm geçmişi, notlar ve hatırlatıcılar</li>
+    <li>Uyarı eşikleri, sessiz saatler ve yenileme sıklığı gibi ayarlar</li>
+    <li>PC bağlantısı için girdiğiniz bilgisayar adresi, port ve PIN</li>
+    <li>Sunucu izleme listesine eklediğiniz adresler</li>
+  </ul>
+  <p>Bu veriler uygulamanın Veriler bölümünden yedeklenebilir veya Android ayarlarından
+  temizlenebilir. Android'in otomatik yedeklemesi açıksa uygulama verileri
+  kullanıcının kendi Google hesabına yedeklenebilir; bu yedeğe geliştirici erişemez.</p>
+
+  <h2>3. İzinler</h2>
+  <ul>
+    <li><strong>İnternet ve ağ durumu:</strong> hız/ping/DNS testleri, sunucu izleme ve
+        yerel ağdaki Windows bilgisayarıyla bağlantı için.</li>
+    <li><strong>Yerel ağ (yakındaki cihazlar):</strong> Android 17 ve üzerinde aynı ağdaki
+        Windows bilgisayarını bulmak ve ona bağlanmak için istenir. İzin verilmezse
+        yalnızca PC bağlantısı çalışmaz; diğer özellikler etkilenmez.</li>
+    <li><strong>Bildirimler:</strong> pil, sıcaklık ve hatırlatıcı uyarıları için
+        (isteğe bağlı, sonradan kapatılabilir).</li>
+    <li><strong>Açılışta başlatma:</strong> hatırlatıcıların yeniden kurulması için.</li>
+    <li><strong>Titreşim:</strong> isteğe bağlı uyarı geri bildirimi için.</li>
+  </ul>
+  <p>Mağaza sürümünde harici uygulama kurma izni bulunmaz; güncellemeler Google Play
+  üzerinden yapılır.</p>
+
+  <h2>4. Ağ bağlantıları</h2>
+  <p><strong>PC bağlantısı:</strong> Telefon, aynı yerel ağdaki Windows bilgisayarına
+  doğrudan bağlanır. Gönderilen bilgiler yalnızca 6 haneli PIN ve sistem durumu
+  isteğidir. Bağlantı internet üzerinden dışarıya açılmaz; veriler yerel ağ dışına
+  çıkmaz. Bilgisayar tarafındaki PIN, yanlış denemelerde geçici olarak kilitlenir.</p>
+  <p><strong>Test araçları:</strong> Ping, hız ve DNS testleri sırasında Cloudflare,
+  Google, Quad9, OVH veya Hetzner gibi herkese açık uç noktalara doğrudan istek
+  gönderilir. Bu isteklerde geliştiriciye ait bir sunucu aracı yoktur; standart HTTP/TCP
+  bağlantısı dışında kimlik bilgisi iletilmez.</p>
+  <p><strong>Sunucu izleme:</strong> Yalnızca sizin eklediğiniz adreslere istek yapılır.</p>
+
+  <h2>5. Üçüncü taraflar</h2>
+  <p>Uygulama reklam ağı, analiz SDK'sı veya sosyal medya SDK'sı kullanmaz.
+  Google Play üzerinden yapılan kurulum ve güncellemeler Google'ın kendi gizlilik
+  politikasına tabidir.</p>
+
+  <h2>6. Çocukların gizliliği</h2>
+  <p>Uygulama çocuklara yönelik değildir ve bilerek çocuklardan veri toplamaz.</p>
+
+  <h2>7. Verilerin silinmesi</h2>
+  <p>Sunucuda saklanan bir hesabınız veya veriniz yoktur. Tüm yerel verileri
+  <em>Ayarlar &gt; Uygulamalar &gt; YEK Panel &gt; Depolama &gt; Verileri temizle</em>
+  yoluyla veya uygulamayı kaldırarak silebilirsiniz.</p>
+
+  <h2>8. Değişiklikler</h2>
+  <p>Politika güncellenirse bu sayfada yeni tarihle yayımlanır. Önemli değişiklikler
+  uygulama sürüm notlarında belirtilir.</p>
+
+  <h2>9. İletişim</h2>
+  <p>Gizlilikle ilgili sorular için Google Play'deki uygulama sayfasında listelenen
+  geliştirici iletişim e-posta adresini kullanabilirsiniz.<br>
+  Geliştirici: <strong>YEK BİLGİSAYAR</strong></p>
+
+  <hr>
+
+  <h2>Privacy Policy (English summary)</h2>
+  <p>YEK Panel does not collect, transmit, sell or share personal data. The developer
+  operates no data server. Settings, notes, reminders, history and PC pairing details
+  are stored only on the device. The PC connection works exclusively on the local
+  network and requires the PIN shown by the YEK Panel Windows app. Public endpoints
+  (Cloudflare, Google, Quad9, OVH, Hetzner) are contacted directly only when the user
+  runs network tests. The app contains no ads, analytics or tracking SDKs. The Play
+  build updates through Google Play and does not request the install-packages
+  permission. Users can delete all local data by clearing app storage or uninstalling.
+  Contact: the developer e-mail listed on the Google Play store page (YEK BİLGİSAYAR).</p>
+</main>
+</body>
+</html>
