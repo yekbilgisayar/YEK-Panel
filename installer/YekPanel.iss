@@ -2,7 +2,7 @@
 ; Derlemek için: ISCC.exe YekPanel.iss
 
 #define AppName "YEK Panel"
-#define AppVersion "2.3.1"
+#define AppVersion "2.4.0"
 #define AppPublisher "YEK BİLGİSAYAR"
 #define AppExeName "YekPanel.exe"
 #define SourceExe "..\YEK-Panel.exe"
@@ -14,11 +14,11 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppCopyright=YEK BİLGİSAYAR
-VersionInfoVersion=2.3.1.0
+VersionInfoVersion=2.4.0.0
 VersionInfoCompany=YEK BİLGİSAYAR
 VersionInfoDescription=YEK Panel Kurulum
 VersionInfoProductName=YEK Panel
-VersionInfoProductVersion=2.3.1
+VersionInfoProductVersion=2.4.0
 DefaultDirName={localappdata}\Programs\YekPanel
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -64,6 +64,8 @@ Root: HKCU; Subkey: "Software\YekPanel"; ValueType: string; ValueName: "Version"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Otomatik güncelleme /SILENT ile çalışır; kurulum sonrası uygulamayı yeniden açar.
+Filename: "{app}\{#AppExeName}"; Flags: nowait runascurrentuser; Check: WizardSilent
 
 [UninstallRun]
 ; Açık uygulama dosyayı kilitlediği için kaldırmadan önce kapatılır.

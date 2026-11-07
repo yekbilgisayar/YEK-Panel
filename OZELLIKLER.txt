@@ -1,7 +1,7 @@
-﻿YEK PANEL v2.3 · 134 ÖZELLİK
+﻿YEK PANEL v2.4 · 135 ÖZELLİK
 ============================================================
 
-Toplam 134 özellik: 18'i v2.3'te yeni, 10'u v2.2'de, 6'sı v2.1'de, 100'ü önceki sürümlerden geliyor.
+Toplam 135 özellik: 1'i v2.4'te yeni, 18'i v2.3'te yeni, 10'u v2.2'de, 6'sı v2.1'de, 100'ü önceki sürümlerden geliyor.
 [YENİ v2.3] = bu sürümde eklendi   [YENİ v2.2] = v2.2'de eklendi
 [YENİ v2.0] = v2.0'da eklendi   [MEVCUT] = daha önce vardı
 
@@ -162,6 +162,7 @@ v2.3 / v2.3.1 YENİ ÖZELLİKLER
 132) Notları TXT veya Markdown olarak dışa aktarma — [YENİ v2.3]
 133) Varsayılan ses çıkışı ve mikrofon cihazını değiştirme — [YENİ v2.3]
 134) Ana ekran kartlarını sıralama ve gizleme — [YENİ v2.3]
+135) Otomatik güncelleme: kurulum paketini indirir, SHA-256 ile doğrular, sessizce kurar ve uygulamayı yeniden açar — [YENİ v2.4]
 
 ------------------------------------------------------------
 Not: v2.3.1'in ana yeniliği, Android telefonla PC bağlantısının

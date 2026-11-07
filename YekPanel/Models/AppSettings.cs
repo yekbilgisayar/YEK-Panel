@@ -42,6 +42,7 @@ public sealed class AppSettings
     public string QuickNote { get; set; } = "";
 
     public bool AutoUpdateCheck { get; set; } = true;
+    public bool AutoInstallUpdates { get; set; } = true;
     public string LastUpdateCheck { get; set; } = "";
     public string SkippedVersion { get; set; } = "";
     public string LatestVersion { get; set; } = "";

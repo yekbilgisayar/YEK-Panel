@@ -1,3 +1,24 @@
+# YEK Panel 2.4.0
+
+Windows 10/11 için sistem ve sunucu izleme paneli; Android için mobil sistem paneli.
+
+## Masaüstü 2.4.0
+
+- **Otomatik güncelleme:** Yeni sürüm bulunduğunda kurulum paketi arka planda
+  indirilir, GitHub'daki SHA-256 özetiyle doğrulanır ve sessizce kurulur.
+  Uygulama güncelleme sonrası kendiliğinden yeniden açılır.
+- **Doğrulama:** Boyut, SHA-256 özeti ve ürün adı uyuşmazsa paket çalıştırılmaz;
+  dosya silinip hata gösterilir.
+- **Elle güncelleme:** Hakkında & Güncelleme bölümüne "İNDİR VE KUR" düğmesi
+  eklendi; indirme yüzdesi aynı satırda gösterilir.
+- **Ayar:** "Yeni sürümü otomatik indir ve kur" onay kutusu (varsayılan açık).
+  Kapatılırsa yalnızca sürüm bildirimi yapılır.
+- **Korunan veriler:** Güncelleme sırasında `%AppData%\YekPanel` içeriği ve
+  kayıtlı sunucular değişmez; kaldırma davranışı önceki sürümle aynıdır.
+- Sürüm: **2.4.0** (2.4.0.0).
+
+---
+
 # YEK Panel 2.3.1 ve Android 1.2.1
 
 Windows 10/11 için sistem ve sunucu izleme paneli; Android için mobil sistem paneli.

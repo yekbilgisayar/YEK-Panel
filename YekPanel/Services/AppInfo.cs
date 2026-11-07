@@ -9,10 +9,10 @@ public static class AppInfo
 {
     public const string RepoOwner = "yekbilgisayar";
     public const string RepoName = "YEK-Panel";
-    public const int FeatureCount = 134;
+    public const int FeatureCount = 135;
 
     public static Version Version =>
-        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 3, 1, 0);
+        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 4, 0, 0);
 
     public static string VersionFull => $"{Version.Major}.{Version.Minor}.{Version.Build}";
 
@@ -21,5 +21,5 @@ public static class AppInfo
     public static string ReleasesUrl => $"https://github.com/{RepoOwner}/{RepoName}/releases";
 
     public static string LatestReleaseApi =>
-        $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest";
+        $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=30";
 }

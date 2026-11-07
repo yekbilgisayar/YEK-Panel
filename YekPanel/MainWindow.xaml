@@ -984,6 +984,17 @@
                                         </WrapPanel>
                                         <CheckBox x:Name="AutoUpdateCheck" Style="{StaticResource DarkCheck}"
                                                   Content="Açılışta güncelleme kontrol et" FontSize="11" Margin="0,5,0,0" />
+                                        <CheckBox x:Name="AutoInstallUpdateCheck" Style="{StaticResource DarkCheck}"
+                                                  Content="Yeni sürümü otomatik indir ve kur" FontSize="11" Margin="0,6,0,0"
+                                                  ToolTip="Kurulum paketi indirilir, SHA-256 ile doğrulanır ve uygulama yeniden başlatılır."
+                                                  AutomationProperties.Name="Güncellemeyi otomatik kur"
+                                                  AutomationProperties.AutomationId="UpdateAutoInstall" />
+                                        <Button x:Name="InstallUpdateButton" Content="İNDİR VE KUR"
+                                                Style="{StaticResource PrimaryButton}" FontSize="10" Padding="12,7"
+                                                Margin="0,8,0,0" HorizontalAlignment="Left" Visibility="Collapsed"
+                                                Click="InstallUpdate_Click"
+                                                AutomationProperties.Name="Güncellemeyi indir ve kur"
+                                                AutomationProperties.AutomationId="UpdateInstall" />
                                     </StackPanel>
                                 </Border>
 

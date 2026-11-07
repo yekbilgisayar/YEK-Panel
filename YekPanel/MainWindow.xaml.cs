@@ -97,6 +97,9 @@ public partial class MainWindow : Window
     private bool _checking;
     private bool _checkingUpdate;
     private ReleaseInfo? _latestRelease;
+    private bool _updateDownloading;
+    private CancellationTokenSource? _updateCts;
+    private string _downloadedUpdatePath = "";
     private bool _ipLoading;
     private bool _connectionLoading;
     private DateTime? _countdownEnd;
@@ -140,6 +143,7 @@ public partial class MainWindow : Window
         UpdatePinVisual();
         InitializeTray();
         InitializeAboutInfo();
+        UpdateInstaller.CleanupOld();
 
         _serverTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_settings.RefreshSeconds) };
         _serverTimer.Tick += async (_, _) => await CheckServersAsync();
@@ -1385,6 +1389,7 @@ public partial class MainWindow : Window
         AboutVersionText.Text = $"YEK Panel v{AppInfo.VersionFull}";
         AboutFeatureText.Text = $"{AppInfo.FeatureCount} özellik";
         AutoUpdateCheck.IsChecked = _settings.AutoUpdateCheck;
+        AutoInstallUpdateCheck.IsChecked = _settings.AutoInstallUpdates;
 
         ErrorLogButton.IsEnabled = AppLog.HasEntries;
         ErrorLogButton.ToolTip = AppLog.HasEntries ? AppLog.FilePath : "Henüz kayıtlı hata yok.";
@@ -1399,12 +1404,16 @@ public partial class MainWindow : Window
             skipped ? "Atlamayı geri al" : "Bu sürümü atla");
         SkipVersionButton.IsEnabled = hasStored && (hasNewer || skipped);
 
+        var ready = !string.IsNullOrEmpty(_downloadedUpdatePath) && File.Exists(_downloadedUpdatePath);
+
         if (hasNewer && !skipped)
         {
             UpdateButton.Visibility = Visibility.Visible;
             UpdateButton.ToolTip = $"Yeni sürüm v{latest} hazır";
             if (!_checkingUpdate)
-                UpdateStatusText.Text = $"Yeni sürüm hazır: v{latest} · şu an v{AppInfo.VersionFull}";
+                UpdateStatusText.Text = ready
+                    ? $"v{latest} indirildi ve doğrulandı · KUR düğmesine basın."
+                    : $"Yeni sürüm hazır: v{latest} · şu an v{AppInfo.VersionFull}";
         }
         else
         {
@@ -1414,6 +1423,11 @@ public partial class MainWindow : Window
                     ? $"v{latest} sürümü atlandı. SÜRÜM NOTLARI ile inceleyebilirsiniz."
                     : LastCheckText();
         }
+
+        InstallUpdateButton.Content = ready ? "KUR" : "İNDİR VE KUR";
+        InstallUpdateButton.Visibility = ready || (hasNewer && !skipped)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private string LastCheckText() =>
@@ -1458,14 +1472,16 @@ public partial class MainWindow : Window
         try
         {
             var previous = _settings.LatestVersion;
-            var release = await UpdateService.GetLatestAsync();
+            var (release, failure) = await UpdateService.GetLatestDetailedAsync();
             _settings.LastUpdateCheck = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
 
             if (release == null)
             {
                 SettingsStore.Save(_settings);
                 UpdateAboutState();
-                UpdateStatusText.Text = "Güncelleme sunucusuna ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin.";
+                UpdateStatusText.Text = string.IsNullOrEmpty(failure)
+                    ? "Güncelleme sunucusuna ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin."
+                    : failure;
                 return;
             }
 
@@ -1491,6 +1507,12 @@ public partial class MainWindow : Window
                         $"Yeni sürüm v{_settings.LatestVersion} hazır. " +
                         "Ayarlar > Hakkında & Güncelleme bölümünden inceleyebilirsiniz.",
                         Forms.ToolTipIcon.Info);
+
+                if (!manual && _settings.AutoInstallUpdates && release.HasInstaller &&
+                    _downloadedUpdatePath.Length == 0)
+                    _ = DownloadAndInstallAsync(release, automatic: true);
+
+                UpdateAboutState();
             }
             else if (newer)
             {
@@ -1517,6 +1539,137 @@ public partial class MainWindow : Window
             _checkingUpdate = false;
             CheckUpdateButton.IsEnabled = true;
         }
+    }
+
+    private async Task DownloadAndInstallAsync(ReleaseInfo release, bool automatic)
+    {
+        if (_updateDownloading)
+            return;
+
+        if (!release.HasInstaller)
+        {
+            UpdateStatusText.Text =
+                "Bu sürüm için otomatik kurulum paketi yayınlanmamış. SÜRÜM NOTLARI düğmesiyle tarayıcıdan indirebilirsiniz.";
+            return;
+        }
+
+        _updateDownloading = true;
+        InstallUpdateButton.IsEnabled = false;
+        UpdateStatusText.Text = "Güncelleme indiriliyor… %0";
+        _updateCts = new CancellationTokenSource();
+
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                if (_updateDownloading)
+                    UpdateStatusText.Text = $"Güncelleme indiriliyor… %{(int)Math.Round(value)}";
+            });
+
+            var path = await UpdateInstaller.DownloadAsync(release, progress, _updateCts.Token);
+
+            if (!UpdateInstaller.Verify(path, release, out var error))
+            {
+                UpdateInstaller.TryDelete(path);
+                UpdateStatusText.Text = $"İndirilen güncelleme doğrulanamadı: {error}.";
+                return;
+            }
+
+            _downloadedUpdatePath = path;
+            UpdateStatusText.Text =
+                $"v{release.Version.Major}.{release.Version.Minor}.{release.Version.Build} indirildi ve doğrulandı.";
+
+            ShowBalloon(
+                "YEK Panel · Güncelleme",
+                automatic
+                    ? "Güncelleme indirildi. Uygulama kurulum için yeniden başlatılacak."
+                    : "Güncelleme indirildi ve doğrulandı.",
+                Forms.ToolTipIcon.Info,
+                force: true);
+
+            if (automatic)
+            {
+                await Task.Delay(1200);
+
+                if (!string.IsNullOrEmpty(_downloadedUpdatePath))
+                    LaunchUpdateInstaller();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatusText.Text = "Güncelleme indirmesi iptal edildi.";
+        }
+        catch (Exception exception)
+        {
+            AppLog.Error("Güncelleme indirme", exception);
+            UpdateStatusText.Text = "Güncelleme indirilemedi. Bağlantıyı kontrol edip yeniden deneyin.";
+        }
+        finally
+        {
+            _updateDownloading = false;
+            InstallUpdateButton.IsEnabled = true;
+            _updateCts?.Dispose();
+            _updateCts = null;
+            UpdateAboutState();
+        }
+    }
+
+    private void LaunchUpdateInstaller()
+    {
+        if (string.IsNullOrEmpty(_downloadedUpdatePath) || !File.Exists(_downloadedUpdatePath))
+            return;
+
+        if (!UpdateInstaller.TryLaunch(_downloadedUpdatePath, out var error))
+        {
+            UpdateStatusText.Text = $"Güncelleme başlatılamadı: {error}";
+            return;
+        }
+
+        Application.Current.Shutdown();
+    }
+
+    private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_downloadedUpdatePath) && File.Exists(_downloadedUpdatePath))
+        {
+            LaunchUpdateInstaller();
+            return;
+        }
+
+        var release = _latestRelease;
+        if (release == null || !UpdateService.IsNewer(release.Version))
+        {
+            await CheckForUpdatesAsync(manual: true);
+            release = _latestRelease;
+        }
+
+        if (release == null || !UpdateService.IsNewer(release.Version))
+        {
+            UpdateStatusText.Text = "Kurulacak yeni sürüm bulunamadı.";
+            return;
+        }
+
+        if (!release.HasInstaller)
+        {
+            UpdateStatusText.Text =
+                "Bu sürüm için otomatik kurulum paketi yayınlanmamış. SÜRÜM NOTLARI düğmesiyle tarayıcıdan indirebilirsiniz.";
+            return;
+        }
+
+        var label = $"{release.Version.Major}.{release.Version.Minor}.{release.Version.Build}";
+        var answer = MessageBox.Show(
+            this,
+            $"YEK Panel v{label} indirilecek ve kurulacak.\n\n" +
+            "Uygulama kapanacak, güncelleme sessizce kurulacak ve yeniden açılacak. " +
+            "Ayarlarınız ve kayıtlı verileriniz korunur.\n\nDevam edilsin mi?",
+            "YEK Panel güncellemesi",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        await DownloadAndInstallAsync(release, automatic: true);
     }
 
     private void CheckUpdates_Click(object sender, RoutedEventArgs e) =>
@@ -2356,6 +2509,7 @@ public partial class MainWindow : Window
         _settings.DailySummaryEnabled = DailySummaryCheck.IsChecked == true;
         _settings.DailySummaryTime = NormalizeClock(SummaryTimeBox.Text, _settings.DailySummaryTime);
         _settings.AutoUpdateCheck = AutoUpdateCheck.IsChecked == true;
+        _settings.AutoInstallUpdates = AutoInstallUpdateCheck.IsChecked == true;
         _settings.CpuAlertEnabled = CpuAlertCheck.IsChecked == true;
         if (int.TryParse(CpuAlertBox.Text.Trim(), NumberStyles.Integer, Tr, out var cpuLimit))
             _settings.CpuAlertC = Math.Clamp(cpuLimit, 50, 110);

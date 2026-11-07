@@ -1,4 +1,4 @@
-﻿YEK PANEL v2.3.1
+﻿YEK PANEL v2.4.0
 ================
 
 Ne yapar?
@@ -15,7 +15,17 @@ Ne yapar?
 - Sistem tepsisinde çalışır; kapatınca tepsiye küçültülebilir.
 - Sunucu sorunlarında tepsi bildirimi gösterir; sessiz saatler ve günlük özet desteklenir.
 - Uygulama iki kez açılmaz; ikinci denemede mevcut pencere öne gelir.
-- GitHub üzerinden yeni sürüm olup olmadığını kontrol eder; isterseniz kapatabilirsiniz.
+- GitHub üzerinden yeni sürüm olup olmadığını kontrol eder. İsterseniz kurulum
+  paketini indirip SHA-256 ile doğrulayarak sessizce güncelleyebilirsiniz.
+
+v2.4.0 yenilikleri
+- Otomatik güncelleme: Ayarlar > Hakkında & Güncelleme bölümündeki "Yeni sürümü
+  otomatik indir ve kur" açıksa yeni sürüm arka planda indirilir, GitHub'daki
+  SHA-256 özetiyle doğrulanır ve sessizce kurulur.
+- Doğrulanamayan paket çalıştırılmaz; indirme iptal edilip hata gösterilir.
+- Güncelleme sonrası uygulama kendiliğinden yeniden açılır; ayarlar ve
+  %AppData%\YekPanel verileri korunur.
+- Elle güncelleme için "İNDİR VE KUR" düğmesi eklendi.
 
 v2.3.1 yenilikleri
 - Android telefonla PC bağlantısı masaüstü uygulamasına gömüldü; ayrı

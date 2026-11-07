@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>YekPanel</AssemblyName>
     <RootNamespace>YekPanel</RootNamespace>
-    <Version>2.3.1</Version>
+    <Version>2.4.0</Version>
     <Product>YEK Panel</Product>
     <Company>YEK BİLGİSAYAR</Company>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

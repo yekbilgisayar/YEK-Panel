@@ -10,3 +10,5 @@ f4fd86a3c31b5491dd1e1d3927241232966e64fb207fae874789cfdb2540aa28 *YEK-Panel-Setu
 2213c24c7cb114dc1e3cfe27c3866f3252cb7c099bc4b9e1f6b839ee745b33eb *YEK-Panel-2.3.1-kaynak.zip
 67c0a7f6fefd1b6a8edf9354f4b76cdb84bd3bfccef111469990c5a7f3c2672e *YEK-Panel-Android-1.2.1.apk
 cf76cdee5a06603d5163577e5f472b4580c7d99797b199898d12aef37e53df7d *play-store/YEK-Panel-1.2.1-play.aab
+bc5ce76b764f1100c2cc1ef6bd7e86679353109b74650466947cdd247acab5f6 *YEK-Panel-Setup-2.4.0.exe
+15e7c33c1712e1e7d16d599c7ac0b716665df81ac56f719d29fd24af4fe48bd0 *YEK-Panel-2.4.0-portable.exe
