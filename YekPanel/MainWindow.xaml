@@ -686,7 +686,7 @@
 
                         <StackPanel Grid.Row="0">
                             <TextBlock Text="AYARLAR" Style="{StaticResource CardTitle}" FontSize="12" />
-                            <TextBlock Text="Sunucu adreslerini girin. Boş bırakılan satır kontrol edilmez."
+                            <TextBlock Text="Sunucularınızın adını ve adresini kendiniz yazın. Boş bırakılan satır kontrol edilmez."
                                        FontSize="10" Foreground="#7396BE" Margin="0,4,0,2" TextWrapping="Wrap" />
                             <TextBlock Text="Şema yazmazsanız http:// otomatik eklenir. Örnek: 192.168.1.10:8123"
                                        FontSize="9.5" Foreground="#4F6C8F" TextWrapping="Wrap" />
@@ -694,20 +694,67 @@
 
                         <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
-                                <TextBlock Text="WEB SİTESİ" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="UrlSite" Style="{StaticResource InputBox}" Margin="0,0,0,6" />
+                                <TextBlock Text="SUNUCULAR" Style="{StaticResource FieldLabel}" />
+                                <Grid Margin="2,0,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="AD" FontSize="8.5" Foreground="#7396BE" />
+                                    <TextBlock Grid.Column="1" Text="ADRES" FontSize="8.5" Foreground="#7396BE" Margin="6,0,0,0" />
+                                </Grid>
 
-                                <TextBlock Text="SUNUCU PANELİ" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="UrlPanel" Style="{StaticResource InputBox}" Margin="0,0,0,6" />
-
-                                <TextBlock Text="HOME ASSISTANT" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="UrlHa" Style="{StaticResource InputBox}" Margin="0,0,0,6" />
-
-                                <TextBlock Text="NEXTCLOUD" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="UrlCloud" Style="{StaticResource InputBox}" Margin="0,0,0,10" />
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="NameSite" Style="{StaticResource InputBox}" Margin="0,0,6,0"
+                                             ToolTip="1. sunucunun adı · örnek: Ev Sunucusu"
+                                             AutomationProperties.Name="1. sunucu adı" />
+                                    <TextBox x:Name="UrlSite" Grid.Column="1" Style="{StaticResource InputBox}"
+                                             ToolTip="1. sunucunun adresi · örnek: https://ornek.com"
+                                             AutomationProperties.Name="1. sunucu adresi" />
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="NamePanel" Style="{StaticResource InputBox}" Margin="0,0,6,0"
+                                             ToolTip="2. sunucunun adı"
+                                             AutomationProperties.Name="2. sunucu adı" />
+                                    <TextBox x:Name="UrlPanel" Grid.Column="1" Style="{StaticResource InputBox}"
+                                             ToolTip="2. sunucunun adresi"
+                                             AutomationProperties.Name="2. sunucu adresi" />
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="NameHa" Style="{StaticResource InputBox}" Margin="0,0,6,0"
+                                             ToolTip="3. sunucunun adı"
+                                             AutomationProperties.Name="3. sunucu adı" />
+                                    <TextBox x:Name="UrlHa" Grid.Column="1" Style="{StaticResource InputBox}"
+                                             ToolTip="3. sunucunun adresi"
+                                             AutomationProperties.Name="3. sunucu adresi" />
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="NameCloud" Style="{StaticResource InputBox}" Margin="0,0,6,0"
+                                             ToolTip="4. sunucunun adı"
+                                             AutomationProperties.Name="4. sunucu adı" />
+                                    <TextBox x:Name="UrlCloud" Grid.Column="1" Style="{StaticResource InputBox}"
+                                             ToolTip="4. sunucunun adresi"
+                                             AutomationProperties.Name="4. sunucu adresi" />
+                                </Grid>
 
                                 <TextBlock Text="WAKE-ON-LAN MAC ADRESLERİ" Style="{StaticResource FieldLabel}" />
-                                <TextBlock Text="Sunucu kapalıyken satırdaki güç düğmesi ağdan açma sinyali gönderir."
+                                <TextBlock Text="Satır sırası yukarıdaki sunucularla aynıdır. Sunucu kapalıyken satırdaki güç düğmesi ağdan açma sinyali gönderir."
                                            FontSize="9" Foreground="#4F6C8F" Margin="2,0,0,5" TextWrapping="Wrap" />
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
@@ -719,19 +766,19 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="WEB" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
+                                        <TextBlock Text="1. SUNUCU" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
                                         <TextBox x:Name="MacSite" Style="{StaticResource InputBox}" FontSize="10.5" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                        <TextBlock Text="PANEL" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
+                                        <TextBlock Text="2. SUNUCU" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
                                         <TextBox x:Name="MacPanel" Style="{StaticResource InputBox}" FontSize="10.5" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Margin="0,6,0,0">
-                                        <TextBlock Text="HOME ASSISTANT" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
+                                        <TextBlock Text="3. SUNUCU" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
                                         <TextBox x:Name="MacHa" Style="{StaticResource InputBox}" FontSize="10.5" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,6,0,0">
-                                        <TextBlock Text="NEXTCLOUD" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
+                                        <TextBlock Text="4. SUNUCU" FontSize="8.5" Foreground="#7396BE" Margin="2,0,0,3" />
                                         <TextBox x:Name="MacCloud" Style="{StaticResource InputBox}" FontSize="10.5" />
                                     </StackPanel>
                                 </Grid>
@@ -846,12 +893,13 @@
                                 <CheckBox x:Name="ClipboardHistoryCheck" Style="{StaticResource DarkCheck}"
                                           Content="Pano geçmişini tut (son 15 metin)" Margin="0,0,0,6"
                                           ToolTip="Pano metinleri yalnızca bellekte tutulur." />
-                                <TextBlock Text="BAKIM MODU (bildirim ve rapor dışı)" FontSize="8.5" Foreground="#4F6C8F" Margin="2,2,0,4" />
+                                <TextBlock Text="BAKIM MODU (bildirim ve rapor dışı)" FontSize="8.5" Foreground="#4F6C8F" Margin="2,2,0,2"
+                                           ToolTip="Sıra, yukarıdaki sunucu satırlarıyla aynıdır." />
                                 <UniformGrid Columns="2" Margin="0,0,0,6">
-                                    <CheckBox x:Name="MaintenanceSite" Style="{StaticResource DarkCheck}" Content="Web" FontSize="11" Margin="0,0,0,4" />
-                                    <CheckBox x:Name="MaintenancePanel" Style="{StaticResource DarkCheck}" Content="Panel" FontSize="11" Margin="0,0,0,4" />
-                                    <CheckBox x:Name="MaintenanceHa" Style="{StaticResource DarkCheck}" Content="Home Assistant" FontSize="11" />
-                                    <CheckBox x:Name="MaintenanceCloud" Style="{StaticResource DarkCheck}" Content="Nextcloud" FontSize="11" />
+                                    <CheckBox x:Name="MaintenanceSite" Style="{StaticResource DarkCheck}" Content="1. sunucu" FontSize="11" Margin="0,0,0,4" />
+                                    <CheckBox x:Name="MaintenancePanel" Style="{StaticResource DarkCheck}" Content="2. sunucu" FontSize="11" Margin="0,0,0,4" />
+                                    <CheckBox x:Name="MaintenanceHa" Style="{StaticResource DarkCheck}" Content="3. sunucu" FontSize="11" />
+                                    <CheckBox x:Name="MaintenanceCloud" Style="{StaticResource DarkCheck}" Content="4. sunucu" FontSize="11" />
                                 </UniformGrid>
 
                                 <TextBlock Text="PC BAĞLANTISI (ANDROID)" Style="{StaticResource FieldLabel}" Margin="2,10,0,3" />

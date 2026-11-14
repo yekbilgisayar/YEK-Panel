@@ -27,14 +27,19 @@ public static class ReportExporter
             builder.AppendLine();
 
             builder.AppendLine("SUNUCU;TARIH;CEVRIMICI %");
-            foreach (var endpoint in settings.Endpoints.Where(e => !string.IsNullOrWhiteSpace(e.Url)))
+            for (int i = 0; i < settings.Endpoints.Count; i++)
             {
-                foreach (var day in UptimeHistory.Daily(endpoint.Name, days))
+                var endpoint = settings.Endpoints[i];
+                if (string.IsNullOrWhiteSpace(endpoint.Url))
+                    continue;
+
+                var name = AppSettings.DisplayName(settings.Endpoints, i);
+                foreach (var day in UptimeHistory.Daily(name, days))
                 {
                     var value = day.Percent is double percent
                         ? percent.ToString("0.0", Tr)
                         : "-";
-                    builder.AppendLine($"{endpoint.Name};{day.Day.ToString("dd.MM.yyyy", Tr)};{value}");
+                    builder.AppendLine($"{name};{day.Day.ToString("dd.MM.yyyy", Tr)};{value}");
                 }
             }
 

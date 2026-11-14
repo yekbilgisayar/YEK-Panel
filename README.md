@@ -11,7 +11,7 @@ Windows 10/11 için açık kaynak sistem ve sunucu izleme paneli. Tek dosya olar
 - CPU, RAM, disk, çalışma süresi, ağ hızı ve süreç takibi; en yoğun 5 işlemi tek tıkla kapatma.
 - GPU yükü (%) ve VRAM kullanımı; CPU sıcaklığı ve RAM eşik uyarıları, isteğe bağlı ses.
 - Ana ekranda pil, bağlantı türü/hızı, yerel IP, ağ geçidi, DNS, Wi-Fi, genel IP ve tüm diskler; 30 saniyede bir otomatik yenileme, tek tıkla IP kopyalama.
-- Web sitesi, sunucu paneli, Home Assistant ve Nextcloud için durum, gecikme, SSL ve TCP port izleme.
+- Kendi adreslerinizi girdiğiniz dört sunucu için durum, gecikme, SSL ve TCP port izleme; sistem adlarını siz belirlersiniz.
 - Hava durumu, internet gecikmesi ve dış IP.
 - Araç Merkezi sekmeleri: pil, ağ adaptörü, DNS değiştirici, etkin bağlantılar, diskler, ping, port testi, kronometre, geri sayım, pano geçmişi, notlar ve ses cihazları.
 - Otomasyon: PowerShell/Python/BAT/PS1 betikleri, Ctrl+Alt+1–9 hızlı başlatma ve zamanlanmış görevler.

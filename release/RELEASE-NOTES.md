@@ -1,3 +1,23 @@
+# YEK Panel 2.4.1
+
+Windows 10/11 için sistem ve sunucu izleme paneli; Android için mobil sistem paneli.
+
+## Masaüstü 2.4.1
+
+- **Kendi sunucu adınız:** Kurulumdan sonra hazır "Web Sitesi", "Sunucu Paneli",
+  "Home Assistant" veya "Nextcloud" adları gelmez. Ayarlar > **SUNUCULAR**
+  bölümünde her satır için ad ve adres alanları birlikte gösterilir; adı ve
+  adresi kullanıcı yazar.
+- **Genel etiketler:** Ad girilmeyen satırlar ana ekranda "Sunucu 1"…"Sunucu 4"
+  olarak listelenir; Wake-on-LAN ve bakım modu etiketleri de satır sırasına göre
+  numaralandırılır.
+- **Eski ayarlar:** Adresi boş bırakılmış eski hazır adlar ilk açılışta temizlenir.
+  Adresi tanımlı sunucuların adları, geçmişleri ve bildirim kayıtları korunur.
+- Rapor ve CSV çıktısında adsız sunucular sıra numarasıyla gösterilir.
+- Sürüm: **2.4.1** (2.4.1.0).
+
+---
+
 # YEK Panel 2.4.0
 
 Windows 10/11 için sistem ve sunucu izleme paneli; Android için mobil sistem paneli.

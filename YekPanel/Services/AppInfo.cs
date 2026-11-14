@@ -9,10 +9,10 @@ public static class AppInfo
 {
     public const string RepoOwner = "yekbilgisayar";
     public const string RepoName = "YEK-Panel";
-    public const int FeatureCount = 135;
+    public const int FeatureCount = 136;
 
     public static Version Version =>
-        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 4, 0, 0);
+        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 4, 1, 0);
 
     public static string VersionFull => $"{Version.Major}.{Version.Minor}.{Version.Build}";
 

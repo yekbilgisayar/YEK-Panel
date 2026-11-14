@@ -67,17 +67,25 @@ public sealed class AppSettings
 
     public static List<EndpointConfig> DefaultEndpoints() => new()
     {
-        new EndpointConfig { Name = "Web Sitesi", Url = "" },
-        new EndpointConfig { Name = "Sunucu Paneli", Url = "" },
-        new EndpointConfig { Name = "Home Assistant", Url = "" },
-        new EndpointConfig { Name = "Nextcloud", Url = "" }
+        new EndpointConfig { Name = "", Url = "" },
+        new EndpointConfig { Name = "", Url = "" },
+        new EndpointConfig { Name = "", Url = "" },
+        new EndpointConfig { Name = "", Url = "" }
     };
+
+    public static string DisplayName(IReadOnlyList<EndpointConfig> endpoints, int index) =>
+        index >= 0 && index < endpoints.Count && !string.IsNullOrWhiteSpace(endpoints[index].Name)
+            ? endpoints[index].Name
+            : $"Sunucu {index + 1}";
 }
 
 public static class SettingsStore
 {
     private static readonly string Dir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "YekPanel");
+
+    private static readonly string[] LegacyPresetNames =
+        { "Web Sitesi", "Sunucu Paneli", "Home Assistant", "Nextcloud" };
 
     private static readonly string FilePath = Path.Combine(Dir, "settings.json");
 
@@ -192,10 +200,15 @@ public static class SettingsStore
 
         for (int i = 0; i < settings.Endpoints.Count; i++)
         {
-            if (string.IsNullOrWhiteSpace(settings.Endpoints[i].Name))
-                settings.Endpoints[i].Name = defaults[i].Name;
-            settings.Endpoints[i].Url = NormalizeUrl(settings.Endpoints[i].Url);
-            settings.Endpoints[i].Mac = (settings.Endpoints[i].Mac ?? "").Trim();
+            var endpoint = settings.Endpoints[i];
+            endpoint.Name = Trim(endpoint.Name, 40);
+            endpoint.Url = NormalizeUrl(endpoint.Url);
+            endpoint.Mac = (endpoint.Mac ?? "").Trim();
+
+            // Eski sürümlerin hazır adları, adres girilmemişse temizlenir.
+            if (endpoint.Url.Length == 0 &&
+                LegacyPresetNames.Contains(endpoint.Name, StringComparer.OrdinalIgnoreCase))
+                endpoint.Name = "";
         }
     }
 

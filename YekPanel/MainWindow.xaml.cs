@@ -577,16 +577,19 @@ public partial class MainWindow : Window
         _rows.Clear();
         ServerList.Children.Clear();
 
-        foreach (var endpoint in _settings.Endpoints)
+        for (int i = 0; i < _settings.Endpoints.Count; i++)
         {
-            var row = CreateRow(endpoint);
+            var row = CreateRow(_settings.Endpoints[i], i);
             _rows.Add(row);
             ServerList.Children.Add(row.Root);
         }
     }
 
-    private ServerRow CreateRow(EndpointConfig endpoint)
+    private string EndpointName(int index) => AppSettings.DisplayName(_settings.Endpoints, index);
+
+    private ServerRow CreateRow(EndpointConfig endpoint, int index)
     {
+        var displayName = EndpointName(index);
         var dot = new Ellipse
         {
             Width = 8,
@@ -598,7 +601,7 @@ public partial class MainWindow : Window
 
         var name = new TextBlock
         {
-            Text = endpoint.Name,
+            Text = displayName,
             FontSize = 12.5,
             FontWeight = FontWeights.SemiBold,
             Foreground = TextSoft,
@@ -703,8 +706,8 @@ public partial class MainWindow : Window
             ToolTip = "Wake-on-LAN ile aç",
             Visibility = Visibility.Collapsed
         };
-        System.Windows.Automation.AutomationProperties.SetName(wol, endpoint.Name + " sunucusunu aç");
-        wol.Click += (_, _) => _ = WakeServerAsync(endpoint.Name, endpoint.Mac);
+        System.Windows.Automation.AutomationProperties.SetName(wol, displayName + " sunucusunu aç");
+        wol.Click += (_, _) => _ = WakeServerAsync(displayName, endpoint.Mac);
 
         var bottomRight = new StackPanel
         {
@@ -742,7 +745,7 @@ public partial class MainWindow : Window
             Dot = dot,
             Latency = latency,
             Status = status,
-            Name = endpoint.Name,
+            Name = displayName,
             Url = endpoint.Url,
             Mac = endpoint.Mac,
             Wol = wol,
@@ -2177,7 +2180,8 @@ public partial class MainWindow : Window
         Report30Text.Foreground = range == 30 ? _accentText : Muted;
 
         var configured = _settings.Endpoints
-            .Where(e => !string.IsNullOrWhiteSpace(e.Url))
+            .Select((endpoint, index) => new { Endpoint = endpoint, Name = EndpointName(index) })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Endpoint.Url))
             .ToList();
 
         if (configured.Count == 0)
@@ -2190,9 +2194,9 @@ public partial class MainWindow : Window
             });
         }
 
-        foreach (var endpoint in configured)
+        foreach (var item in configured)
         {
-            var days = UptimeHistory.Daily(endpoint.Name, range);
+            var days = UptimeHistory.Daily(item.Name, range);
             var known = days.Where(d => d.Percent.HasValue).Select(d => d.Percent!.Value).ToList();
             double? average = known.Count > 0 ? known.Average() : null;
 
@@ -2200,7 +2204,7 @@ public partial class MainWindow : Window
             var header = new Grid();
             header.Children.Add(new TextBlock
             {
-                Text = endpoint.Name,
+                Text = item.Name,
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = TextSoft,
@@ -2402,6 +2406,10 @@ public partial class MainWindow : Window
         if (_miniMode)
             ToggleMini();
 
+        NameSite.Text = NameAt(0);
+        NamePanel.Text = NameAt(1);
+        NameHa.Text = NameAt(2);
+        NameCloud.Text = NameAt(3);
         UrlSite.Text = UrlAt(0);
         UrlPanel.Text = UrlAt(1);
         UrlHa.Text = UrlAt(2);
@@ -2466,6 +2474,9 @@ public partial class MainWindow : Window
         SettingsOverlay.Visibility = Visibility.Visible;
     }
 
+    private string NameAt(int index) =>
+        _settings.Endpoints.Count > index ? _settings.Endpoints[index].Name : "";
+
     private string UrlAt(int index) =>
         _settings.Endpoints.Count > index ? _settings.Endpoints[index].Url : "";
 
@@ -2474,6 +2485,10 @@ public partial class MainWindow : Window
 
     private void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
+        _settings.Endpoints[0].Name = NameSite.Text.Trim();
+        _settings.Endpoints[1].Name = NamePanel.Text.Trim();
+        _settings.Endpoints[2].Name = NameHa.Text.Trim();
+        _settings.Endpoints[3].Name = NameCloud.Text.Trim();
         _settings.Endpoints[0].Url = UrlSite.Text.Trim();
         _settings.Endpoints[1].Url = UrlPanel.Text.Trim();
         _settings.Endpoints[2].Url = UrlHa.Text.Trim();

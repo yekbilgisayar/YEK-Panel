@@ -1,12 +1,12 @@
-﻿YEK PANEL v2.4.0
+﻿YEK PANEL v2.4.1
 ================
 
 Ne yapar?
 - Bilgisayarın işlemci, bellek, disk ve çalışma süresi bilgilerini canlı gösterir.
 - İşlemci ve bellek için son 60 saniyenin grafiğini çizer.
 - Anlık ağ hızını (indirme/yükleme) ve en çok bellek kullanan işlemleri gösterir.
-- Dört sunucu ucunu (web sitesi, panel, Home Assistant, Nextcloud) belirli aralıkla
-  kontrol eder; yeşil = çevrimiçi, kırmızı = ulaşılamıyor, sarı = yanıt veriyor.
+- Dört sunucu satırını belirli aralıkla kontrol eder; adları ve adresleri siz
+  yazarsınız. Yeşil = çevrimiçi, kırmızı = ulaşılamıyor, sarı = yanıt veriyor.
 - Her sunucunun altında son 20 kontrolün durum çubuklarını ve gecikme grafiğini gösterir.
 - 24 saatlik çevrimiçi oranını, SSL kalan gün sayısını ve TCP port durumunu gösterir.
 - Sağ üstte hava durumu: sıcaklık, durum, şehir ve yarının en düşük/en yüksek derecesi.
@@ -17,6 +17,14 @@ Ne yapar?
 - Uygulama iki kez açılmaz; ikinci denemede mevcut pencere öne gelir.
 - GitHub üzerinden yeni sürüm olup olmadığını kontrol eder. İsterseniz kurulum
   paketini indirip SHA-256 ile doğrulayarak sessizce güncelleyebilirsiniz.
+
+v2.4.1 yenilikleri
+- Hazır sunucu adları kaldırıldı. Kurulumdan sonra "Web Sitesi", "Home
+  Assistant", "Nextcloud" gibi adlar görünmez; Ayarlar > SUNUCULAR
+  bölümünde her satıra kendi sistem adınızı ve adresini yazarsınız.
+- Ad girilmeyen satırlar ana ekranda "Sunucu 1", "Sunucu 2" olarak görünür.
+- Adres girilmemiş eski hazır adlar ilk açılışta otomatik temizlenir;
+  adresi tanımlı sunucuların adları korunur.
 
 v2.4.0 yenilikleri
 - Otomatik güncelleme: Ayarlar > Hakkında & Güncelleme bölümündeki "Yeni sürümü
